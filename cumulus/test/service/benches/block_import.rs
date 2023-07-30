@@ -55,7 +55,7 @@ fn benchmark_block_import(c: &mut Criterion) {
 	let mut block_builder =
 		client.new_block_at(parent_hash, Default::default(), RecordProof::No).unwrap();
 	for extrinsic in extrinsics {
-		block_builder.push(extrinsic).unwrap();
+		block_builder.push(extrinsic, None).unwrap();
 	}
 	let benchmark_block = block_builder.build().unwrap();
 

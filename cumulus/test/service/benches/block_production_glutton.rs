@@ -79,8 +79,8 @@ fn benchmark_block_production_compute(c: &mut Criterion) {
 						let mut block_builder = client
 							.new_block_at(best_hash, Default::default(), RecordProof::Yes)
 							.unwrap();
-						block_builder.push(validation_data).unwrap();
-						block_builder.push(time).unwrap();
+						block_builder.push(validation_data, None).unwrap();
+						block_builder.push(time, None).unwrap();
 						block_builder.build().unwrap()
 					},
 					BatchSize::SmallInput,
@@ -101,8 +101,8 @@ fn benchmark_block_production_compute(c: &mut Criterion) {
 						let mut block_builder = client
 							.new_block_at(best_hash, Default::default(), RecordProof::No)
 							.unwrap();
-						block_builder.push(validation_data).unwrap();
-						block_builder.push(time).unwrap();
+						block_builder.push(validation_data, None).unwrap();
+						block_builder.push(time, None).unwrap();
 						block_builder.build().unwrap()
 					},
 					BatchSize::SmallInput,

@@ -130,7 +130,7 @@ fn prepare_benchmark(client: &FullClient) -> (usize, Vec<OpaqueExtrinsic>) {
 
 	// Every block needs one timestamp extrinsic.
 	let extrinsic_set_time = extrinsic_set_time(1 + MINIMUM_PERIOD_FOR_BLOCKS);
-	block_builder.push(extrinsic_set_time.clone()).unwrap();
+	block_builder.push(extrinsic_set_time.clone(), None).unwrap();
 	extrinsics.push(extrinsic_set_time);
 
 	// Creating those is surprisingly costly, so let's only do it once and later just `clone` them.
@@ -147,7 +147,7 @@ fn prepare_benchmark(client: &FullClient) -> (usize, Vec<OpaqueExtrinsic>) {
 		)
 		.into();
 
-		match block_builder.push(extrinsic.clone()) {
+		match block_builder.push(extrinsic.clone(), None) {
 			Ok(_) => {},
 			Err(ApplyExtrinsicFailed(Validity(TransactionValidityError::Invalid(
 				InvalidTransaction::ExhaustsResources,
@@ -174,7 +174,7 @@ fn block_production(c: &mut Criterion) {
 	// Buliding the very first block is around ~30x slower than any subsequent one,
 	// so let's make sure it's built and imported before we benchmark anything.
 	let mut block_builder = client.new_block(Default::default()).unwrap();
-	block_builder.push(extrinsic_set_time(1)).unwrap();
+	block_builder.push(extrinsic_set_time(1), None).unwrap();
 	import_block(client, block_builder.build().unwrap());
 
 	let (max_transfer_count, extrinsics) = prepare_benchmark(&client);
@@ -194,7 +194,7 @@ fn block_production(c: &mut Criterion) {
 				let mut block_builder =
 					client.new_block_at(best_hash, Default::default(), RecordProof::No).unwrap();
 				for extrinsic in extrinsics {
-					block_builder.push(extrinsic).unwrap();
+					block_builder.push(extrinsic, None).unwrap();
 				}
 				block_builder.build().unwrap()
 			},
@@ -209,7 +209,7 @@ fn block_production(c: &mut Criterion) {
 				let mut block_builder =
 					client.new_block_at(best_hash, Default::default(), RecordProof::Yes).unwrap();
 				for extrinsic in extrinsics {
-					block_builder.push(extrinsic).unwrap();
+					block_builder.push(extrinsic, None).unwrap();
 				}
 				block_builder.build().unwrap()
 			},
