@@ -24,7 +24,7 @@ use crate::{
 };
 
 use clap::Parser;
-use sc_client_api::{Backend, HeaderBackend, UsageProvider};
+use sc_client_api::{Backend, HeaderBackend};
 use sc_executor::{
 	HeapAllocStrategy, DEFAULT_HEAP_ALLOC_STRATEGY, precompile_and_serialize_versioned_wasm_runtime,
 };
