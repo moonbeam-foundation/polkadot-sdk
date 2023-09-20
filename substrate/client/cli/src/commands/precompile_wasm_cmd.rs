@@ -47,7 +47,7 @@ pub struct PrecompileWasmCmd {
     /// path to the directory where precompiled artifact will be written
     #[arg()]
     pub output_dir: PathBuf,
-    
+
 	#[allow(missing_docs)]
 	#[clap(flatten)]
 	pub pruning_params: PruningParams,
@@ -76,11 +76,11 @@ pub struct PrecompileWasmCmd {
 
 impl PrecompileWasmCmd {
 	/// Run the precompile-wasm command
-	pub async fn run<B, BA, C>(&self, backend: Arc<BA>) -> error::Result<()>
+	pub async fn run<B, BA>(&self, backend: Arc<BA>) -> error::Result<()>
 	where
         B: BlockT,
         BA: Backend<B>,
-        C: UsageProvider<B>,
+
 	{
 		let state = backend.state_at(backend.blockchain().info().finalized_hash)?;
 
