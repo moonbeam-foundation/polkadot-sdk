@@ -25,12 +25,12 @@ use crate::{
 
 use clap::Parser;
 use sc_client_api::{Backend, HeaderBackend};
-use sp_core::traits::RuntimeCode;
 use sc_executor::{
 	HeapAllocStrategy, DEFAULT_HEAP_ALLOC_PAGES, precompile_and_serialize_versioned_wasm_runtime,
 };
-use sp_runtime::traits::Block as BlockT;
 use sc_service::ChainSpec;
+use sp_core::traits::RuntimeCode;
+use sp_runtime::traits::Block as BlockT;
 use sp_state_machine::backend::BackendRuntimeCode;
 use std::{fmt::Debug, path::PathBuf, sync::Arc};
 
@@ -78,7 +78,7 @@ pub struct PrecompileWasmCmd {
 
 impl PrecompileWasmCmd {
 	/// Run the precompile-wasm command
-	pub async fn run<B, BA>(&self, backend: Arc<BA>, spec: Box<dyn ChainSpec>,) -> error::Result<()>
+	pub async fn run<B, BA>(&self, backend: Arc<BA>, spec: Box<dyn ChainSpec>) -> error::Result<()>
 	where
         B: BlockT,
         BA: Backend<B>,
@@ -92,7 +92,6 @@ impl PrecompileWasmCmd {
 			let state = backend.state_at(backend.blockchain().info().finalized_hash)?;
 
 			precompile_and_serialize_versioned_wasm_runtime(
-				true,
 				HeapAllocStrategy::Static { extra_pages: heap_pages },
 				&BackendRuntimeCode::new(&state).runtime_code()?,
 				execution_method_from_cli(
@@ -106,12 +105,13 @@ impl PrecompileWasmCmd {
 			let storage = spec.as_storage_builder().build_storage()?;
 			if let Some(wasm_bytecode) = storage.top.get(sp_storage::well_known_keys::CODE) {
 				let runtime_code = RuntimeCode {
-					code_fetcher: &sp_core::traits::WrappedRuntimeCode(wasm_bytecode.as_slice().into()),
+					code_fetcher: &sp_core::traits::WrappedRuntimeCode(
+						wasm_bytecode.as_slice().into(),
+					),
 					hash: sp_core::blake2_256(&wasm_bytecode).to_vec(),
 					heap_pages: Some(heap_pages as u64),
 				};
 				precompile_and_serialize_versioned_wasm_runtime(
-					true,
 					HeapAllocStrategy::Static { extra_pages: heap_pages },
 					&runtime_code,
 					execution_method_from_cli(
