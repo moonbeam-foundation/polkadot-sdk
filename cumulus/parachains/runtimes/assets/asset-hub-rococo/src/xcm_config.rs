@@ -26,12 +26,15 @@ use assets_common::{
 };
 use frame_support::{
 	match_types, parameter_types,
-	traits::{ConstU32, Contains, Equals, Everything, Get, Nothing, PalletInfoAccess},
+	traits::{
+		tokens::imbalance::ResolveTo, ConstU32, Contains, Equals, Everything, Get, Nothing,
+		PalletInfoAccess,
+	},
 };
 use frame_system::EnsureRoot;
+use pallet_collator_selection::StakingPotAccountId;
 use pallet_xcm::XcmPassthrough;
 use parachains_common::{
-	impls::ToStakingPot,
 	xcm_config::{
 		AssetFeeAsExistentialDepositMultiplier, ConcreteAssetFromSystem,
 		RelayOrOtherSystemParachains,
@@ -578,7 +581,13 @@ impl xcm_executor::Config for XcmConfig {
 		MaxInstructions,
 	>;
 	type Trader = (
-		UsingComponents<WeightToFee, TokenLocation, AccountId, Balances, ToStakingPot<Runtime>>,
+		UsingComponents<
+			WeightToFee,
+			TokenLocation,
+			AccountId,
+			Balances,
+			ResolveTo<StakingPotAccountId<Runtime>, Balances>,
+		>,
 		// This trader allows to pay with `is_sufficient=true` "Trust Backed" assets from dedicated
 		// `pallet_assets` instance - `Assets`.
 		cumulus_primitives_utility::TakeFirstAssetTrader<
