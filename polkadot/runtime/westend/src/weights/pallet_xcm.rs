@@ -53,16 +53,18 @@ use core::marker::PhantomData;
 /// Weight functions for `pallet_xcm`.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> pallet_xcm::WeightInfo for WeightInfo<T> {
-	/// Storage: unknown `0x3a696e747261626c6f636b5f656e74726f7079` (r:1 w:1)
-	/// Proof Skipped: unknown `0x3a696e747261626c6f636b5f656e74726f7079` (r:1 w:1)
-	/// Storage: Dmp DeliveryFeeFactor (r:1 w:0)
-	/// Proof Skipped: Dmp DeliveryFeeFactor (max_values: None, max_size: None, mode: Measured)
-	/// Storage: XcmPallet SupportedVersion (r:1 w:0)
-	/// Proof Skipped: XcmPallet SupportedVersion (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Dmp DownwardMessageQueues (r:1 w:1)
-	/// Proof Skipped: Dmp DownwardMessageQueues (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Dmp DownwardMessageQueueHeads (r:1 w:1)
-	/// Proof Skipped: Dmp DownwardMessageQueueHeads (max_values: None, max_size: None, mode: Measured)
+	fn transfer_assets() -> Weight {
+		// TODO: run benchmarks
+		Weight::zero()
+	}
+	/// Storage: `Dmp::DeliveryFeeFactor` (r:1 w:0)
+	/// Proof: `Dmp::DeliveryFeeFactor` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `XcmPallet::SupportedVersion` (r:1 w:0)
+	/// Proof: `XcmPallet::SupportedVersion` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Dmp::DownwardMessageQueues` (r:1 w:1)
+	/// Proof: `Dmp::DownwardMessageQueues` (`max_values`: None, `max_size`: None, mode: `Measured`)
+	/// Storage: `Dmp::DownwardMessageQueueHeads` (r:1 w:1)
+	/// Proof: `Dmp::DownwardMessageQueueHeads` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn send() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `169`
