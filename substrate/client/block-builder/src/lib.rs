@@ -206,8 +206,8 @@ where
 		let parent_hash = self.parent_hash;
 		let extrinsics = &mut self.extrinsics;
 		let version = self.version;
-		let estimate_proof_size_before = self
-			.api.proof_recorder().map(|pr| pr.estimate_encoded_size()).unwrap_or(0);
+		let estimate_proof_size_before =
+			self.api.proof_recorder().map(|pr| pr.estimate_encoded_size()).unwrap_or(0);
 
 		self.api.execute_in_transaction(|api| {
 			let res = if version < 6 {
@@ -224,8 +224,8 @@ where
 					if let Some(remaining_size_for_proof) = remaining_size_for_proof {
 						let estimate_proof_size_after =
 							api.proof_recorder().map(|pr| pr.estimate_encoded_size()).unwrap_or(0);
-						let estimate_proof_inflation = estimate_proof_size_after
-							.saturating_sub(estimate_proof_size_before);
+						let estimate_proof_inflation =
+							estimate_proof_size_after.saturating_sub(estimate_proof_size_before);
 
 						if estimate_proof_inflation > remaining_size_for_proof {
 							// The execution of the transaction results in exceeding the limits,
@@ -376,7 +376,9 @@ mod tests {
 		)
 		.unwrap();
 
-		block_builder.push(ExtrinsicBuilder::new_read_and_panic(8).build(), None).unwrap_err();
+		block_builder
+			.push(ExtrinsicBuilder::new_read_and_panic(8).build(), None)
+			.unwrap_err();
 
 		let block = block_builder.build().unwrap();
 

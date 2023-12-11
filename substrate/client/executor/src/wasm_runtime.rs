@@ -318,10 +318,17 @@ where
 			};
 			if let Some(wasmtime_precompiled_dir) = wasmtime_precompiled_path {
 				if !wasmtime_precompiled_dir.is_dir() {
-					return Err(WasmError::Instantiation(format!("--wasmtime-precompiled is not a directory: {}", wasmtime_precompiled_dir.display())));
+					return Err(WasmError::Instantiation(format!(
+						"--wasmtime-precompiled is not a directory: {}",
+						wasmtime_precompiled_dir.display()
+					)));
 				}
 				let handle_err = |e: std::io::Error| -> WasmError {
-					return WasmError::Instantiation(format!("Io error when loading wasmtime precompiled folder ({}): {}", wasmtime_precompiled_dir.display(), e));
+					return WasmError::Instantiation(format!(
+						"Io error when loading wasmtime precompiled folder ({}): {}",
+						wasmtime_precompiled_dir.display(),
+						e
+					));
 				};
 				let mut maybe_compiled_artifact = None;
 
@@ -354,11 +361,16 @@ where
 							));
 						}
 					} else {
-						return Err(WasmError::Instantiation("wasmtime precompiled folder contain a file with invalid utf8 name".to_owned()));
+						return Err(WasmError::Instantiation(
+							"wasmtime precompiled folder contain a file with invalid utf8 name"
+								.to_owned(),
+						));
 					}
 				}
 
-				if let Some((compiled_artifact_path, module_version_strategy)) = maybe_compiled_artifact {
+				if let Some((compiled_artifact_path, module_version_strategy)) =
+					maybe_compiled_artifact
+				{
 					// # Safety
 					//
 					// The file name of the artifact was checked before,
@@ -376,7 +388,8 @@ where
 								semantics,
 							},
 						)
-					}.map(|runtime| -> Box<dyn WasmModule> { Box::new(runtime) })
+					}
+					.map(|runtime| -> Box<dyn WasmModule> { Box::new(runtime) })
 				} else {
 					sc_executor_wasmtime::create_runtime::<H>(
 						blob,
@@ -399,7 +412,7 @@ where
 				)
 				.map(|runtime| -> Box<dyn WasmModule> { Box::new(runtime) })
 			}
-		}
+		},
 	}
 }
 
@@ -411,7 +424,7 @@ pub fn precompile_and_serialize_versioned_wasm_runtime<'c>(
 	wasmtime_precompiled_path: &Path,
 ) -> Result<(), WasmError> {
 	let semantics = match wasm_method {
-		WasmExecutionMethod::Compiled { instantiation_strategy } => {
+		WasmExecutionMethod::Compiled { instantiation_strategy } =>
 			sc_executor_wasmtime::Semantics {
 				heap_alloc_strategy,
 				instantiation_strategy,
@@ -422,8 +435,7 @@ pub fn precompile_and_serialize_versioned_wasm_runtime<'c>(
 				wasm_bulk_memory: false,
 				wasm_reference_types: false,
 				wasm_simd: false,
-			}
-		},
+			},
 	};
 
 	let code_hash = &runtime_code.hash;
@@ -444,14 +456,22 @@ pub fn precompile_and_serialize_versioned_wasm_runtime<'c>(
 	let serialized_precompiled_wasm = sc_executor_wasmtime::prepare_runtime_artifact(
 		blob,
 		sc_executor_wasmtime::ModuleVersionStrategy::Custom(artifact_version.clone()),
-		&semantics
+		&semantics,
 	)?;
 
 	// Write in a file
-	let mut file = std::fs::File::create(wasmtime_precompiled_path.join(format!("precompiled_wasm_{}", &artifact_version)))
-		.map_err(|e| WasmError::Other(format!("Fail to create file 'precompiled_wasm_0x{}', I/O Error: {}", &artifact_version, e)))?;
-    file.write_all(&serialized_precompiled_wasm)
-		.map_err(|e| WasmError::Other(format!("Fail to write precompiled artifact, I/O Error: {}", e)))?;
+	let mut file = std::fs::File::create(
+		wasmtime_precompiled_path.join(format!("precompiled_wasm_{}", &artifact_version)),
+	)
+	.map_err(|e| {
+		WasmError::Other(format!(
+			"Fail to create file 'precompiled_wasm_0x{}', I/O Error: {}",
+			&artifact_version, e
+		))
+	})?;
+	file.write_all(&serialized_precompiled_wasm).map_err(|e| {
+		WasmError::Other(format!("Fail to write precompiled artifact, I/O Error: {}", e))
+	})?;
 
 	Ok(())
 }
@@ -564,7 +584,7 @@ where
 		allow_missing_func_imports,
 		cache_path,
 		wasmtime_precompiled,
-		code_hash
+		code_hash,
 	)?;
 
 	// If the runtime blob doesn't embed the runtime version then use the legacy version query

@@ -505,7 +505,10 @@ where
 						if pending_tx_encoded_size + proof_diff > block_size_limit {
 							// The transaction and its storage proof are too big to be included
 							// in a future block, we must ban the transaction right away
-							debug!("[{:?}] Invalid transaction: too big storage proof", pending_tx_hash);
+							debug!(
+								"[{:?}] Invalid transaction: too big storage proof",
+								pending_tx_hash
+							);
 							unqueue_invalid.push(pending_tx_hash);
 						} else {
 							// The transaction is suspicious, but it could be a false positive

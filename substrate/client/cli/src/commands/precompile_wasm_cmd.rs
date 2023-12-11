@@ -17,16 +17,19 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    arg_enums::{DEFAULT_WASMTIME_INSTANTIATION_STRATEGY, execution_method_from_cli, WasmExecutionMethod, WasmtimeInstantiationStrategy},
+	arg_enums::{
+		execution_method_from_cli, WasmExecutionMethod, WasmtimeInstantiationStrategy,
+		DEFAULT_WASMTIME_INSTANTIATION_STRATEGY,
+	},
 	error::{self, Error},
 	params::{DatabaseParams, PruningParams, SharedParams},
-    CliConfiguration
+	CliConfiguration,
 };
 
 use clap::Parser;
 use sc_client_api::{Backend, HeaderBackend};
 use sc_executor::{
-	HeapAllocStrategy, DEFAULT_HEAP_ALLOC_PAGES, precompile_and_serialize_versioned_wasm_runtime,
+	precompile_and_serialize_versioned_wasm_runtime, HeapAllocStrategy, DEFAULT_HEAP_ALLOC_PAGES,
 };
 use sc_service::ChainSpec;
 use sp_core::traits::RuntimeCode;
@@ -46,9 +49,9 @@ pub struct PrecompileWasmCmd {
 	#[arg(long, value_name = "COUNT")]
 	pub default_heap_pages: Option<u32>,
 
-    /// path to the directory where precompiled artifact will be written
-    #[arg()]
-    pub output_dir: PathBuf,
+	/// path to the directory where precompiled artifact will be written
+	#[arg()]
+	pub output_dir: PathBuf,
 
 	#[allow(missing_docs)]
 	#[clap(flatten)]
@@ -80,9 +83,8 @@ impl PrecompileWasmCmd {
 	/// Run the precompile-wasm command
 	pub async fn run<B, BA>(&self, backend: Arc<BA>, spec: Box<dyn ChainSpec>) -> error::Result<()>
 	where
-        B: BlockT,
-        BA: Backend<B>,
-
+		B: BlockT,
+		BA: Backend<B>,
 	{
 		let heap_pages = self.default_heap_pages.unwrap_or(DEFAULT_HEAP_ALLOC_PAGES);
 
@@ -124,9 +126,8 @@ impl PrecompileWasmCmd {
 			}
 		}
 
-
-        Ok(())
-    }
+		Ok(())
+	}
 }
 
 impl CliConfiguration for PrecompileWasmCmd {
