@@ -63,6 +63,8 @@ pub struct MockValidationDataInherentDataProvider<R = ()> {
 	pub raw_downward_messages: Vec<Vec<u8>>,
 	// Inbound Horizontal messages sorted by channel
 	pub raw_horizontal_messages: Vec<(ParaId, Vec<u8>)>,
+	// Additional keys to be injected
+	pub additional_key_values: Option<Vec<(Vec<u8>, Vec<u8>)>>
 }
 
 pub trait GenerateRandomness<I> {
@@ -214,6 +216,9 @@ impl<R: Send + Sync + GenerateRandomness<u64>> InherentDataProvider
 		sproof_builder.randomness =
 			self.relay_randomness_config.generate_randomness(self.current_para_block.into());
 
+		if let Some(key_values) = &self.additional_key_values {
+			sproof_builder.additional_key_values = key_values.clone()
+		}
 
 		// Inject current para block head, if any
 		sproof_builder.included_para_head = self.current_para_block_head.clone();
