@@ -700,7 +700,7 @@ pub mod pallet {
 	}
 }
 
-/// TypedGet implementaion to get the AccountId of the StakingPot.
+/// [`TypedGet`] implementaion to get the AccountId of the StakingPot.
 pub struct StakingPotAccountId<R>(PhantomData<R>);
 impl<R> TypedGet for StakingPotAccountId<R>
 where
