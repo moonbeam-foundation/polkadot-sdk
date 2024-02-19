@@ -53,6 +53,7 @@ use prometheus_endpoint::{
 	register, Counter, Gauge, MetricSource, Opts, PrometheusError, Registry, SourcedGauge, U64,
 };
 use prost::Message;
+use rand::RngCore;
 use schnellru::{ByLength, LruMap};
 use tokio::time::{Interval, MissedTickBehavior};
 
@@ -791,23 +792,35 @@ where
 			self.last_notification_io = Instant::now();
 		}
 
+		
 		// if syncing hasn't sent or received any blocks within `INACTIVITY_EVICT_THRESHOLD`,
-		// it means the local node has stalled and is connected to peers who either don't
+		// it might be the local node has stalled and is connected to peers who either don't
 		// consider it connected or are also all stalled. In order to unstall the node,
-		// disconnect all peers and allow `ProtocolController` to establish new connections.
+		// disconnect half of the peers and allow `ProtocolController` to establish 
+		// new connections.
 		if self.last_notification_io.elapsed() > INACTIVITY_EVICT_THRESHOLD {
-			log::debug!(
+			let peer_count = self.peers.len();
+			log::info!(
 				target: LOG_TARGET,
-				"syncing has halted due to inactivity, evicting all peers",
+				"syncing has halted due to inactivity ({}s), evicting half ({}) the peers",
+				INACTIVITY_EVICT_THRESHOLD.seconds(),
+				peer_count
 			);
 
-			for peer in self.peers.keys() {
+			let mut rng = rand::thread_rng();
+			let n_peers = rng.gen_range(1..peer_count);
+			let discarded_peers = self.peers.keys()
+				.choose_multiple(&mut rng, n_peers)
+				.cloned()
+				.collect::<Vec<_>>();
+				
+			for peer in discarded_peers {
 				self.network_service.report_peer(*peer, rep::INACTIVE_SUBSTREAM);
 				self.network_service
 					.disconnect_peer(*peer, self.block_announce_protocol_name.clone());
 			}
 
-			// after all the peers have been evicted, start timer again to prevent evicting
+			// after the peers have been evicted, start timer again to prevent evicting
 			// new peers that join after the old peer have been evicted
 			self.last_notification_io = Instant::now();
 		}
