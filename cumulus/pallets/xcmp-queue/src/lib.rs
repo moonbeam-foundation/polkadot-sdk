@@ -619,6 +619,7 @@ impl<T: Config> Pallet<T> {
 	) -> Result<Weight, XcmError> {
 		let message_hash = xcm.using_encoded(sp_io::hashing::blake2_256);
 		log::debug!("Processing XCMP-XCM: {:?}", &message_hash);
+		log::debug!("Processing XCMP-XCM: {:?}", &xcm);
 		let (result, event) = match Xcm::<T::RuntimeCall>::try_from(xcm) {
 			Ok(xcm) => {
 				let location = (Parent, Parachain(sender.into()));
