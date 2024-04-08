@@ -26,6 +26,7 @@ frame-system = { path = "../system", default-features = false }
 sp-io = { path = "../../primitives/io", default-features = false }
 sp-runtime = { path = "../../primitives/runtime", default-features = false }
 sp-std = { path = "../../primitives/std", default-features = false }
+sp-core = { path = "../../primitives/core", default-features = false, optional = true }
 
 [dev-dependencies]
 pallet-balances = { path = "../balances" }
@@ -56,6 +57,7 @@ runtime-benchmarks = [
 	"frame-system/runtime-benchmarks",
 	"pallet-balances/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
+	"sp-core"
 ]
 try-runtime = [
 	"frame-support/try-runtime",
