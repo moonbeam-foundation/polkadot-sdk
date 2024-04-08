@@ -11983,6 +11983,7 @@ dependencies = [
  "sp-io 39.0.0",
  "sp-keystore 0.41.0",
  "sp-runtime 40.1.0",
+ "sp-std 14.0.0",
 ]
 
 [[package]]
