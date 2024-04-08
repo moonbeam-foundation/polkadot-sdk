@@ -281,8 +281,11 @@ impl Decode for Fungibility {
 		match UncheckedFungibility::decode(input)? {
 			UncheckedFungibility::Fungible(a) if a != 0 => Ok(Self::Fungible(a)),
 			UncheckedFungibility::NonFungible(i) => Ok(Self::NonFungible(i)),
+			#[cfg(not(feature = "runtime-benchmarks"))]
 			UncheckedFungibility::Fungible(_) =>
 				Err("Fungible asset of zero amount is not allowed".into()),
+			#[cfg(feature = "runtime-benchmarks")]
+			UncheckedFungibility::Fungible(a) => Ok(Self::Fungible(a)),
 		}
 	}
 }
