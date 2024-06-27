@@ -790,7 +790,7 @@ impl<Block: BlockT> backend::Backend<Block> for Backend<Block> {
 	}
 }
 
-impl<Block: BlockT> backend::LocalBackend<Block> for Backend<Block> {}
+impl<Block: BlockT + sp_runtime::DeserializeOwned> backend::LocalBackend<Block> for Backend<Block> {}
 
 /// Check that genesis storage is valid.
 pub fn check_genesis_storage(storage: &Storage) -> sp_blockchain::Result<()> {

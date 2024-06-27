@@ -634,4 +634,4 @@ pub trait Backend<Block: BlockT>: AuxStore + Send + Sync {
 }
 
 /// Mark for all Backend implementations, that are making use of state data, stored locally.
-pub trait LocalBackend<Block: BlockT>: Backend<Block> {}
+pub trait LocalBackend<Block: BlockT + sp_runtime::DeserializeOwned>: Backend<Block> {}

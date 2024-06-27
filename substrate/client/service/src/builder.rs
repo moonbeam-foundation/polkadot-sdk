@@ -87,7 +87,7 @@ pub type TFullClient<TBl, TRtApi, TExec> =
 pub type TFullBackend<TBl> = Backend<TBl>;
 
 /// Full client call executor type.
-pub type TFullCallExecutor<TBl, TExec> = crate::client::LocalCallExecutor<TBl, Backend<TBl>, TExec>;
+pub type TFullCallExecutor<TBl, TExec> = crate::client::LocalCallExecutor<TBl, TFullBackend<TBl>, TExec>;
 
 type TFullParts<TBl, TRtApi, TExec> =
 	(TFullClient<TBl, TRtApi, TExec>, Arc<TFullBackend<TBl>>, KeystoreContainer, TaskManager);
@@ -125,7 +125,7 @@ pub fn new_full_client<TBl, TRtApi, TExec>(
 	executor: TExec,
 ) -> Result<TFullClient<TBl, TRtApi, TExec>, Error>
 where
-	TBl: BlockT,
+	TBl: BlockT + sp_runtime::DeserializeOwned,
 	TExec: CodeExecutor + RuntimeVersionOf + Clone,
 {
 	new_full_parts(config, telemetry, executor).map(|parts| parts.0)
@@ -139,7 +139,7 @@ pub fn new_full_parts_record_import<TBl, TRtApi, TExec>(
 	enable_import_proof_recording: bool,
 ) -> Result<TFullParts<TBl, TRtApi, TExec>, Error>
 where
-	TBl: BlockT,
+	TBl: BlockT + sp_runtime::DeserializeOwned,
 	TExec: CodeExecutor + RuntimeVersionOf + Clone,
 {
 	let backend = new_db_backend(config.db_config())?;
@@ -167,7 +167,7 @@ pub fn new_full_parts<TBl, TRtApi, TExec>(
 	executor: TExec,
 ) -> Result<TFullParts<TBl, TRtApi, TExec>, Error>
 where
-	TBl: BlockT,
+	TBl: BlockT + sp_runtime::DeserializeOwned,
 	TExec: CodeExecutor + RuntimeVersionOf + Clone,
 {
 	new_full_parts_record_import(config, telemetry, executor, false)
@@ -183,11 +183,11 @@ pub fn new_full_parts_with_genesis_builder<TBl, TRtApi, TExec, TBuildGenesisBloc
 	enable_import_proof_recording: bool,
 ) -> Result<TFullParts<TBl, TRtApi, TExec>, Error>
 where
-	TBl: BlockT,
+	TBl: BlockT + sp_runtime::DeserializeOwned,
 	TExec: CodeExecutor + RuntimeVersionOf + Clone,
 	TBuildGenesisBlock: BuildGenesisBlock<
 		TBl,
-		BlockImportOperation = <Backend<TBl> as sc_client_api::backend::Backend<TBl>>::BlockImportOperation
+		BlockImportOperation = <TFullBackend<TBl> as sc_client_api::backend::Backend<TBl>>::BlockImportOperation
 	>,
 {
 	let keystore_container = KeystoreContainer::new(&config.keystore)?;
@@ -298,8 +298,8 @@ where
 }
 
 /// Create an instance of client backed by given backend.
-pub fn new_client<E, Block, RA, G>(
-	backend: Arc<Backend<Block>>,
+pub fn new_client<E, Block, RA, G, Backend>(
+	backend: Arc<Backend>,
 	executor: E,
 	genesis_block_builder: G,
 	fork_blocks: ForkBlocks<Block>,
@@ -311,8 +311,8 @@ pub fn new_client<E, Block, RA, G>(
 	config: ClientConfig<Block>,
 ) -> Result<
 	Client<
-		Backend<Block>,
-		crate::client::LocalCallExecutor<Block, Backend<Block>, E>,
+		Backend,
+		crate::client::LocalCallExecutor<Block, Backend, E>,
 		Block,
 		RA,
 	>,
@@ -321,9 +321,10 @@ pub fn new_client<E, Block, RA, G>(
 where
 	Block: BlockT,
 	E: CodeExecutor + RuntimeVersionOf,
+	Backend: sc_client_api::Backend<Block> + 'static,
 	G: BuildGenesisBlock<
 		Block,
-		BlockImportOperation = <Backend<Block> as sc_client_api::backend::Backend<Block>>::BlockImportOperation
+		BlockImportOperation = <Backend as sc_client_api::backend::Backend<Block>>::BlockImportOperation
 	>,
 {
 	let executor = crate::client::LocalCallExecutor::new(

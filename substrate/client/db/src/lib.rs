@@ -37,6 +37,7 @@ mod parity_db;
 mod pinned_blocks_cache;
 mod record_stats_state;
 mod stats;
+
 #[cfg(any(feature = "rocksdb", test))]
 mod upgrade;
 mod utils;
@@ -2552,7 +2553,7 @@ impl<Block: BlockT> sc_client_api::backend::Backend<Block> for Backend<Block> {
 	}
 }
 
-impl<Block: BlockT> sc_client_api::backend::LocalBackend<Block> for Backend<Block> {}
+impl<Block: BlockT + sp_runtime::DeserializeOwned> sc_client_api::backend::LocalBackend<Block> for Backend<Block> {}
 
 #[cfg(test)]
 pub(crate) mod tests {
