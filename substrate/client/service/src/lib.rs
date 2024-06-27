@@ -60,7 +60,7 @@ pub use self::{
 		KeystoreContainer, NetworkStarter, SpawnTasksParams, TFullBackend, TFullCallExecutor,
 		TFullClient,
 	},
-	client::{ClientConfig, LocalCallExecutor},
+	client::{ClientConfig, Client, LocalCallExecutor},
 	error::Error,
 };
 
