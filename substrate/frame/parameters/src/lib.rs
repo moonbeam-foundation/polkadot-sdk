@@ -179,9 +179,8 @@ pub mod pallet {
 
 			let proof_size_diff = proof_size_after.saturating_sub(proof_size_before);
 
-			Weight::zero()
+			Weight::from_parts(0, proof_size_diff)
 				.saturating_add(T::DbWeight::get().reads(items))
-				.saturating_add(Weight::from_parts(0, proof_size_diff))
 		}
 	}
 
