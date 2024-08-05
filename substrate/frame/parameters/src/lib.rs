@@ -125,6 +125,7 @@ use frame_support::traits::{
 	dynamic_params::{AggregatedKeyValue, IntoKey, Key, RuntimeParameterStore, TryIntoKey},
 	EnsureOriginWithArg,
 };
+use cumulus_primitives_storage_weight_reclaim::get_proof_size;
 
 mod benchmarking;
 #[cfg(test)]
@@ -170,9 +171,17 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_initialize(_: BlockNumberFor<T>) -> Weight {
+			let proof_size_before: u64 = get_proof_size().unwrap_or(0);
+
 			let items = Parameters::<T>::iter().count() as u64;
 
-			Weight::zero().saturating_add(T::DbWeight::get().reads(items))
+			let proof_size_after: u64 = get_proof_size().unwrap_or(0);
+
+			let proof_size_diff = proof_size_after.saturating_sub(proof_size_before);
+
+			Weight::zero()
+				.saturating_add(T::DbWeight::get().reads(items))
+				.saturating_add(Weight::from_parts(0, proof_size_diff))
 		}
 	}
 
@@ -193,7 +202,7 @@ pub mod pallet {
 	}
 
 	/// Stored parameters.
-	/// 
+	///
 	/// ## Storage Whitelist
 	/// Since we account for all parameters read weight for each block,
 	/// don't double count it in other pallet benchmarks
