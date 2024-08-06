@@ -19,6 +19,7 @@ frame-system = { path = "../system", default-features = false }
 sp-core = { path = "../../primitives/core", default-features = false }
 sp-runtime = { path = "../../primitives/runtime", default-features = false }
 sp-std = { path = "../../primitives/std", default-features = false }
+cumulus-primitives-storage-weight-reclaim = { path = "../../../cumulus/primitives/storage-weight-reclaim", default-features = false}
 frame-benchmarking = { path = "../benchmarking", default-features = false, optional = true }
 
 [dev-dependencies]
@@ -39,6 +40,7 @@ std = [
 	"sp-core/std",
 	"sp-runtime/std",
 	"sp-std/std",
+	"cumulus-primitives-storage-weight-reclaim/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
