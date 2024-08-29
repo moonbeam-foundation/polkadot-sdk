@@ -1,6 +1,6 @@
 [package]
 name = "cumulus-primitives-timestamp"
-version = "0.15.0"
+version = "0.15.1"
 authors.workspace = true
 edition.workspace = true
 description = "Provides timestamp related functionality for parachains. (polkadot v1.15.0)"
@@ -10,8 +10,6 @@ license = "Apache-2.0"
 workspace = true
 
 [dependencies]
-codec = { features = ["derive"], workspace = true }
-futures = { workspace = true }
 sp-inherents.workspace = true
 sp-timestamp.workspace = true
 cumulus-primitives-core.workspace = true
@@ -19,7 +17,6 @@ cumulus-primitives-core.workspace = true
 [features]
 default = ["std"]
 std = [
-	"codec/std",
 	"cumulus-primitives-core/std",
 	"sp-inherents/std",
 	"sp-timestamp/std",
