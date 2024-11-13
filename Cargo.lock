@@ -6156,6 +6156,7 @@ dependencies = [
  "parity-scale-codec",
  "paste",
  "rusty-fork",
+ "sc-client-db",
  "scale-info",
  "serde",
  "sp-api 35.0.0",
