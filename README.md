@@ -10,8 +10,10 @@
 [![GitHub forks](https://img.shields.io/github/forks/paritytech/polkadot-sdk)](https://github.com/moonbeam-foundation/polkadot-sdk/forks)
 
 <!-- markdownlint-disable-next-line MD013 -->
-[![StackExchange](https://img.shields.io/badge/StackExchange-Community%20&%20Support-222222?logo=stackexchange)](https://substrate.stackexchange.com/)[![GitHub contributors](https://img.shields.io/github/contributors/paritytech/polkadot-sdk)
-](https://github.com/moonbeam-foundation/polkadot-sdk/graphs/contributors)[![GitHub commit activity](https://img.shields.io/github/commit-activity/m/paritytech/polkadot-sdk)](https://github.com/moonbeam-foundation/polkadot-sdk/graphs/commit-activity)![GitHub last commit](https://img.shields.io/github/last-commit/paritytech/polkadot-sdk)
+[![StackExchange](https://img.shields.io/badge/StackExchange-Community%20&%20Support-222222?logo=stackexchange)](https://substrate.stackexchange.com/)
+[![GitHub contributors](https://img.shields.io/github/contributors/paritytech/polkadot-sdk)](https://github.com/moonbeam-foundation/polkadot-sdk/graphs/contributors)
+[![GitHub commit activity](https://img.shields.io/github/commit-activity/m/paritytech/polkadot-sdk)](https://github.com/moonbeam-foundation/polkadot-sdk/graphs/commit-activity)
+![GitHub last commit](https://img.shields.io/github/last-commit/paritytech/polkadot-sdk)
 
 > The Polkadot SDK repository provides all the components needed to start building on the
 > [Polkadot](https://polkadot.network) network, a multi-chain blockchain platform that enables
