@@ -19,7 +19,7 @@
 
 use crate::{
 	backend::Backend, trie_backend::TrieBackend, StorageCollection, StorageKey, StorageValue,
-	TrieBackendBuilder,
+	TrieBackendBuilder, TrieBackendStorage
 };
 use codec::Codec;
 use hash_db::Hasher;
@@ -28,10 +28,11 @@ use sp_trie::{empty_trie_root, LayoutV1, PrefixedMemoryDB};
 use std::collections::{BTreeMap, HashMap};
 
 /// Create a new empty instance of in-memory backend.
-pub fn new_in_mem<H>() -> TrieBackend<PrefixedMemoryDB<H>, H>
+pub fn new_in_mem<H, S>() -> TrieBackend<S, H>
 where
 	H: Hasher,
 	H::Out: Codec + Ord,
+	S: Default + TrieBackendStorage<H>
 {
 	// V1 is same as V0 for an empty trie.
 	TrieBackendBuilder::new(Default::default(), empty_trie_root::<LayoutV1<H>>()).build()
@@ -91,19 +92,21 @@ where
 	}
 }
 
-impl<H: Hasher> Clone for TrieBackend<PrefixedMemoryDB<H>, H>
+impl<H: Hasher, S> Clone for TrieBackend<S, H>
 where
 	H::Out: Codec + Ord,
+	S: Clone + TrieBackendStorage<H>
 {
 	fn clone(&self) -> Self {
 		TrieBackendBuilder::new(self.backend_storage().clone(), *self.root()).build()
 	}
 }
 
-impl<H> Default for TrieBackend<PrefixedMemoryDB<H>, H>
+impl<H, S> Default for TrieBackend<S, H>
 where
 	H: Hasher,
 	H::Out: Codec + Ord,
+	S: Default + TrieBackendStorage<H>
 {
 	fn default() -> Self {
 		new_in_mem()
