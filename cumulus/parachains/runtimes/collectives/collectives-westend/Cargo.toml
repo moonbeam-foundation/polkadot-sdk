@@ -59,6 +59,7 @@ sp-storage.workspace = true
 sp-transaction-pool.workspace = true
 sp-version.workspace = true
 pallet-xcm.workspace = true
+pallet-xcm-benchmarks = { optional = true, workspace = true }
 polkadot-parachain-primitives.workspace = true
 polkadot-runtime-common.workspace = true
 xcm.workspace = true
@@ -121,6 +122,7 @@ runtime-benchmarks = [
 	"pallet-transaction-payment/runtime-benchmarks",
 	"pallet-treasury/runtime-benchmarks",
 	"pallet-utility/runtime-benchmarks",
+	"pallet-xcm-benchmarks/runtime-benchmarks",
 	"pallet-xcm/runtime-benchmarks",
 	"parachains-common/runtime-benchmarks",
 	"polkadot-parachain-primitives/runtime-benchmarks",
@@ -210,6 +212,7 @@ std = [
 	"pallet-transaction-payment/std",
 	"pallet-treasury/std",
 	"pallet-utility/std",
+	"pallet-xcm-benchmarks?/std",
 	"pallet-xcm/std",
 	"parachain-info/std",
 	"parachains-common/std",
