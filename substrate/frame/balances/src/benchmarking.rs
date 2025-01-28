@@ -65,7 +65,12 @@ mod benchmarks {
 		#[extrinsic_call]
 		_(RawOrigin::Signed(caller.clone()), recipient_lookup, transfer_amount);
 
-		assert_eq!(Balances::<T, I>::free_balance(&caller), Zero::zero());
+		if cfg!(feature = "insecure_zero_ed") {
+			assert_eq!(Balances::<T, I>::free_balance(&caller), balance - transfer_amount);
+		} else {
+			assert_eq!(Balances::<T, I>::free_balance(&caller), Zero::zero());
+		}
+
 		assert_eq!(Balances::<T, I>::free_balance(&recipient), transfer_amount);
 	}
 
@@ -173,7 +178,12 @@ mod benchmarks {
 		#[extrinsic_call]
 		_(RawOrigin::Root, source_lookup, recipient_lookup, transfer_amount);
 
-		assert_eq!(Balances::<T, I>::free_balance(&source), Zero::zero());
+		if cfg!(feature = "insecure_zero_ed") {
+			assert_eq!(Balances::<T, I>::free_balance(&source), balance - transfer_amount);
+		} else {
+			assert_eq!(Balances::<T, I>::free_balance(&source), Zero::zero());
+		}
+
 		assert_eq!(Balances::<T, I>::free_balance(&recipient), transfer_amount);
 	}
 
@@ -208,7 +218,12 @@ mod benchmarks {
 		#[extrinsic_call]
 		transfer_allow_death(RawOrigin::Signed(caller.clone()), recipient_lookup, transfer_amount);
 
-		assert_eq!(Balances::<T, I>::free_balance(&caller), Zero::zero());
+		if cfg!(feature = "insecure_zero_ed") {
+			assert_eq!(Balances::<T, I>::free_balance(&caller), balance - transfer_amount);
+		} else {
+			assert_eq!(Balances::<T, I>::free_balance(&caller), Zero::zero());
+		}
+
 		assert_eq!(Balances::<T, I>::free_balance(&recipient), transfer_amount);
 	}
 
