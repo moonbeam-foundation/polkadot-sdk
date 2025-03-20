@@ -110,19 +110,19 @@ impl TransactionPoolOptions {
 /// This trait defines the requirements for a full client transaction pool, ensuring
 /// that it can handle transactions submission and maintenance.
 pub trait FullClientTransactionPool<Block, Client>:
-	MaintainedTransactionPool<
-		Block = Block,
-		Hash = ExtrinsicHash<FullChainApi<Client, Block>>,
-		InPoolTransaction = Transaction<
-			ExtrinsicHash<FullChainApi<Client, Block>>,
-			ExtrinsicFor<FullChainApi<Client, Block>>,
-		>,
-		Error = <FullChainApi<Client, Block> as ChainApi>::Error,
-	> + LocalTransactionPool<
-		Block = Block,
-		Hash = ExtrinsicHash<FullChainApi<Client, Block>>,
-		Error = <FullChainApi<Client, Block> as ChainApi>::Error,
-	>
+MaintainedTransactionPool<
+	Block = Block,
+	Hash = ExtrinsicHash<FullChainApi<Client, Block>>,
+	InPoolTransaction=Transaction<
+		ExtrinsicHash<FullChainApi<Client, Block>>,
+		ExtrinsicFor<FullChainApi<Client, Block>>,
+	>,
+	Error = <FullChainApi<Client, Block> as ChainApi>::Error,
+> + LocalTransactionPool<
+	Block = Block,
+	Hash = ExtrinsicHash<FullChainApi<Client, Block>>,
+	Error = <FullChainApi<Client, Block> as ChainApi>::Error,
+> + std::any::Any
 where
 	Block: BlockT,
 	Client: sp_api::ProvideRuntimeApi<Block>
@@ -133,6 +133,9 @@ where
 		+ 'static,
 	Client::Api: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>,
 {
+	/// Return the inner pool as a `&dyn Any`, can be used to downcast to the concrete pool
+	/// type and use methods that only exist in that pool implementation.
+	fn as_any(&self) -> &dyn std::any::Any;
 }
 
 impl<Block, Client, P> FullClientTransactionPool<Block, Client> for P
@@ -157,8 +160,11 @@ where
 			Block = Block,
 			Hash = ExtrinsicHash<FullChainApi<Client, Block>>,
 			Error = <FullChainApi<Client, Block> as ChainApi>::Error,
-		>,
+		>+ 'static,
 {
+	fn as_any(&self) -> &dyn std::any::Any {
+		self as &dyn std::any::Any
+	}
 }
 
 /// The public type alias for the actual type providing the implementation of
