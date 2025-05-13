@@ -57,7 +57,7 @@ where
 	}
 }
 
-const SEED: u32 = 0;
+const SEED: u32 = 1;
 
 // Create the pre-requisite information needed to create a treasury `spend_local`.
 fn setup_proposal<T: Config<I>, I: 'static>(
