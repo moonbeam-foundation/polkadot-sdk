@@ -1322,7 +1322,7 @@ mod benches {
 		[pallet_uniques, Uniques]
 		[pallet_utility, Utility]
 		[pallet_timestamp, Timestamp]
-		[pallet_transaction_payment, TransactionPayment]
+		[pallet_transaction_payment, PalletTransactionPaymentBenchmark::<Runtime>]
 		[pallet_collator_selection, CollatorSelection]
 		[cumulus_pallet_parachain_system, ParachainSystem]
 		[cumulus_pallet_xcmp_queue, XcmpQueue]
@@ -1665,6 +1665,7 @@ impl_runtime_apis! {
 			use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
 			use pallet_xcm::benchmarking::Pallet as PalletXcmExtrinsicsBenchmark;
 			use pallet_xcm_bridge_hub_router::benchmarking::Pallet as XcmBridgeHubRouterBench;
+			use pallet_transaction_payment::benchmarking::Pallet as PalletTransactionPaymentBenchmark;
 
 			// This is defined once again in dispatch_benchmark, because list_benchmarks!
 			// and add_benchmarks! are macros exported by define_benchmarks! macros and those types
@@ -1696,6 +1697,10 @@ impl_runtime_apis! {
 			use frame_benchmarking::{BenchmarkBatch, BenchmarkError};
 			use frame_support::assert_ok;
 			use sp_storage::TrackedStorageKey;
+
+
+			use pallet_transaction_payment::benchmarking::Pallet as PalletTransactionPaymentBenchmark;
+			impl pallet_transaction_payment::benchmarking::Config for Runtime {}
 
 			use frame_system_benchmarking::Pallet as SystemBench;
 			use frame_system_benchmarking::extensions::Pallet as SystemExtensionsBench;
