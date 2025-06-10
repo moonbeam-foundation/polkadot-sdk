@@ -232,8 +232,8 @@ where
 				self
 					.client
 					.runtime_api()
-					.execute_block_without_final_checks(parent_hash, block.clone())
-					.or_else(|_| self.client.runtime_api().execute_block(parent_hash, block))
+					.execute_block(parent_hash, block.clone())
+					.or_else(|_| self.client.runtime_api().execute_block_without_final_checks(parent_hash, block))
 			}) {
 				return Err(Error::Dispatch(format!(
 					"Failed to collect traces and execute block: {}",
