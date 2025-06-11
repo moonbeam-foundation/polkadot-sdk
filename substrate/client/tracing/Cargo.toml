@@ -48,6 +48,8 @@ sp-runtime.workspace = true
 sp-runtime.default-features = true
 sp-tracing.workspace = true
 sp-tracing.default-features = true
+sp-trie.workspace = true
+sp-trie.default-features = true
 
 [dev-dependencies]
 criterion = { workspace = true, default-features = true }
