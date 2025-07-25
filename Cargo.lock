@@ -6238,6 +6238,7 @@ dependencies = [
  "sp-keyring 40.0.0",
  "sp-runtime 40.1.0",
  "staging-xcm 15.0.3",
+ "staging-xcm-executor 18.0.2",
  "xcm-emulator",
 ]
 
@@ -16303,6 +16304,7 @@ dependencies = [
  "frame-benchmarking 39.0.0",
  "frame-support 39.1.0",
  "frame-system 39.1.0",
+ "hex-literal",
  "pallet-assets 41.1.0",
  "pallet-balances 40.1.0",
  "parity-scale-codec",
