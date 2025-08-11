@@ -14214,6 +14214,7 @@ dependencies = [
  "impl-trait-for-tuples",
  "log",
  "parity-scale-codec",
+ "polkadot-sdk-frame 0.8.1",
  "pretty_assertions",
  "scale-info",
  "sp-api 35.0.0",
