@@ -166,4 +166,5 @@ impl pallet_xcm::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	// Aliasing is disabled: xcm_executor::Config::Aliasers is set to `Nothing`.
 	type AuthorizedAliasConsideration = Disabled;
+	type AssetHubMigrationStarted = frame_support::traits::ConstBool<true>;
 }

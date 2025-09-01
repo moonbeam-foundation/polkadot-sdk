@@ -317,4 +317,5 @@ impl pallet_xcm::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	// Aliasing is disabled: xcm_executor::Config::Aliasers only allows `AliasChildLocation`.
 	type AuthorizedAliasConsideration = Disabled;
+	type AssetHubMigrationStarted = frame_support::traits::ConstBool<true>;
 }

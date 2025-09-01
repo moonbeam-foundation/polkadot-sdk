@@ -198,6 +198,7 @@ impl pallet_xcm::Config for Runtime {
 	type RemoteLockConsumerIdentifier = ();
 	// Aliasing is disabled: xcm_executor::Config::Aliasers is set to `Nothing`.
 	type AuthorizedAliasConsideration = Disabled;
+	type AssetHubMigrationStarted = frame_support::traits::ConstBool<true>;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {

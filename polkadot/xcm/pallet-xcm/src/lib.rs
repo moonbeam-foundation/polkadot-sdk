@@ -327,6 +327,9 @@ pub mod pallet {
 		/// The ID type for local consumers of remote locks.
 		type RemoteLockConsumerIdentifier: Parameter + Member + MaxEncodedLen + Ord + Copy;
 
+		// Indicates if AssetHub migration has started
+		type AssetHubMigrationStarted: Get<bool>;
+
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
 	}

@@ -50,19 +50,20 @@ impl<T: Config> Pallet<T> {
 		assets_transfer_type: &TransferType,
 		fees_transfer_type: &TransferType,
 	) -> Result<(), Error<T>> {
-		// Extract fee asset and check both assets and fees separately.
-		let mut remaining_assets = assets.clone();
-		if fee_asset_index >= remaining_assets.len() {
-			return Err(Error::<T>::Empty);
+		if T::AssetHubMigrationStarted::get() {
+			// Extract fee asset and check both assets and fees separately.
+			let mut remaining_assets = assets.clone();
+			if fee_asset_index >= remaining_assets.len() {
+				return Err(Error::<T>::Empty);
+			}
+			let fee_asset = remaining_assets.remove(fee_asset_index);
+
+			// Check remaining assets with their transfer type.
+			Self::ensure_one_transfer_type_allowed(&remaining_assets, &assets_transfer_type)?;
+
+			// Check fee asset with its transfer type.
+			Self::ensure_one_transfer_type_allowed(&[fee_asset], &fees_transfer_type)?;
 		}
-		let fee_asset = remaining_assets.remove(fee_asset_index);
-
-		// Check remaining assets with their transfer type.
-		Self::ensure_one_transfer_type_allowed(&remaining_assets, &assets_transfer_type)?;
-
-		// Check fee asset with its transfer type.
-		Self::ensure_one_transfer_type_allowed(&[fee_asset], &fees_transfer_type)?;
-
 		Ok(())
 	}
 

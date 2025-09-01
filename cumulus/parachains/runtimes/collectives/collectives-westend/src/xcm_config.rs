@@ -319,6 +319,7 @@ impl pallet_xcm::Config for Runtime {
 		AuthorizeAliasHoldReason,
 		LinearStoragePrice<DepositPerItem, DepositPerByte, Balance>,
 	>;
+	type AssetHubMigrationStarted = frame_support::traits::ConstBool<true>;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {
