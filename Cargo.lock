@@ -5936,26 +5936,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "enum-display"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02058bb25d8d0605829af88230427dd5cd50661590bd2b09d1baf7c64c417f24"
-dependencies = [
- "enum-display-macro",
-]
-
-[[package]]
-name = "enum-display-macro"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4be2cf2fe7b971b1865febbacd4d8df544aa6bd377cca011a6d69dcf4c60d94"
-dependencies = [
- "convert_case 0.6.0",
- "quote 1.0.40",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "enum-ordinalize"
 version = "4.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9890,16 +9870,15 @@ checksum = "4ee93343901ab17bd981295f2cf0026d4ad018c7c31ba84549a4ddbb47a45104"
 
 [[package]]
 name = "litep2p"
-version = "0.12.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1da54ffe750994080fe48ccf5dd298a528406b26b3b544032ae9505ff4d7cbea"
+checksum = "fb01eefca5df3c7166b18e97a87d9869fdfb105b8b3c6d894183489c8d6ce257"
 dependencies = [
  "async-trait",
  "bs58",
  "bytes",
  "cid 0.11.1",
  "ed25519-dalek",
- "enum-display",
  "futures",
  "futures-timer",
  "hickory-resolver 0.25.2",

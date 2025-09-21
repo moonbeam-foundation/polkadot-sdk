@@ -38,7 +38,6 @@ use crate::{
 use alloc::{vec, vec::Vec};
 use frame_support::{storage::child, traits::fungible::Mutate};
 use frame_system::RawOrigin;
-use pallet_revive_fixtures::bench as bench_fixtures;
 use sp_core::{Get, H160, H256, U256};
 use sp_io::hashing::keccak_256;
 use sp_runtime::traits::{Bounded, Hash};
@@ -385,7 +384,7 @@ pub struct WasmModule {
 impl WasmModule {
 	/// Return a contract code that does nothing.
 	pub fn dummy() -> Self {
-		Self::new(bench_fixtures::DUMMY.to_vec())
+		Self::new(Default::default())
 	}
 
 	fn new(code: Vec<u8>) -> Self {
@@ -397,8 +396,8 @@ impl WasmModule {
 #[cfg(feature = "runtime-benchmarks")]
 impl WasmModule {
 	/// Same as [`Self::dummy`] but uses `replace_with` to make the code unique.
-	pub fn dummy_unique(replace_with: u32) -> Self {
-		Self::new(bench_fixtures::dummy_unique(replace_with))
+	pub fn dummy_unique(_replace_with: u32) -> Self {
+		Self::new(Default::default())
 	}
 
 	/// Same as as `with_num_instructions` but based on the blob size.
@@ -446,7 +445,7 @@ impl WasmModule {
 
 	/// A contract code that calls the "noop" host function in a loop depending in the input.
 	pub fn noop() -> Self {
-		Self::new(bench_fixtures::NOOP.to_vec())
+		Self::new(Default::default())
 	}
 
 	/// A contract code that does unaligned memory accessed in a loop.
