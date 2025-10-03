@@ -29,8 +29,11 @@ use crate::{
 		error,
 		log_xt::log_xt_trace,
 	},
-	graph::{self, base_pool::TimedTransactionSource, EventHandler, ExtrinsicHash, IsValidator},
-	ReadyIteratorFor, LOG_TARGET,
+	graph::{
+		self, base_pool::TimedTransactionSource, EventHandler, ExtrinsicHash, IsValidator,
+		RawExtrinsicFor,
+	},
+	ReadyIteratorFor, ValidateTransactionPriority, LOG_TARGET,
 };
 use async_trait::async_trait;
 use futures::{channel::oneshot, future, prelude::*, Future, FutureExt};
@@ -278,7 +281,7 @@ where
 		let number = self.api.resolve_block_number(at);
 		let at = HashAndNumber { hash: at, number: number? };
 		Ok(pool
-			.submit_at(&at, xts)
+			.submit_at(&at, xts, ValidateTransactionPriority::Submitted)
 			.await
 			.into_iter()
 			.map(|result| result.map(|outcome| outcome.hash()))
@@ -731,7 +734,12 @@ where
 				});
 			}
 
-			pool.resubmit_at(&hash_and_number, resubmit_transactions).await;
+			pool.resubmit_at(
+				&hash_and_number,
+				resubmit_transactions,
+				ValidateTransactionPriority::Submitted,
+			)
+			.await;
 		}
 
 		let extra_pool = pool.clone();
