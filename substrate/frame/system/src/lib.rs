@@ -820,13 +820,13 @@ pub mod pallet {
 		#[pallet::weight(task.weight())]
 		pub fn do_task(_origin: OriginFor<T>, task: T::RuntimeTask) -> DispatchResultWithPostInfo {
 			if !task.is_valid() {
-				return Err(Error::<T>::InvalidTask.into())
+				return Err(Error::<T>::InvalidTask.into());
 			}
 
 			Self::deposit_event(Event::TaskStarted { task: task.clone() });
 			if let Err(err) = task.run() {
 				Self::deposit_event(Event::TaskFailed { task, err });
-				return Err(Error::<T>::FailedTask.into())
+				return Err(Error::<T>::FailedTask.into());
 			}
 
 			// Emit a success event, if your design includes events for this pallet.
@@ -1797,10 +1797,13 @@ impl<T: Config> Pallet<T> {
 			if a.consumers > 0 {
 				a.consumers -= 1;
 			} else {
-				log::error!(
+				// On Moonbeam, the consumer counter is only used to track account eligibility for removal.
+				// However, accounts are never actually removed due to immortal Ethereum transactions
+				// that require preserving the nonce indefinitely.
+				/*log::error!(
 					target: LOG_TARGET,
 					"Logic error: Unexpected underflow in reducing consumer",
-				);
+				);*/
 			}
 		})
 	}
@@ -1856,7 +1859,7 @@ impl<T: Config> Pallet<T> {
 
 		// Don't populate events on genesis.
 		if block_number.is_zero() {
-			return
+			return;
 		}
 
 		let phase = ExecutionPhase::<T>::get().unwrap_or_default();
