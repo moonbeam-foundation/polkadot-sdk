@@ -13976,7 +13976,6 @@ dependencies = [
  "hex-literal",
  "pallet-assets",
  "pallet-balances",
- "pallet-revive",
  "pallet-timestamp",
  "parity-scale-codec",
  "polkadot-parachain-primitives",
