@@ -1832,10 +1832,13 @@ impl<T: Config> Pallet<T> {
 			if a.consumers > 0 {
 				a.consumers -= 1;
 			} else {
-				log::error!(
+				// On Moonbeam, the consumer counter is only used to track account eligibility for removal.
+				// However, accounts are never actually removed due to immortal Ethereum transactions
+				// that require preserving the nonce indefinitely.
+				/*log::error!(
 					target: LOG_TARGET,
 					"Logic error: Unexpected underflow in reducing consumer",
-				);
+				);*/
 			}
 		})
 	}
