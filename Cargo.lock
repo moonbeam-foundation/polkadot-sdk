@@ -19869,6 +19869,7 @@ dependencies = [
  "rpassword",
  "sc-client-api",
  "sc-client-db",
+ "sc-executor 0.43.0",
  "sc-keystore",
  "sc-mixnet",
  "sc-network",
@@ -19882,11 +19883,13 @@ dependencies = [
  "sp-blockchain",
  "sp-core 39.0.0",
  "sp-keyring",
- "sp-keystore",
- "sp-panic-handler",
- "sp-runtime",
- "sp-tracing 19.0.0",
- "sp-version",
+ "sp-keystore 0.43.0",
+ "sp-panic-handler 13.0.2",
+ "sp-runtime 42.0.0",
+ "sp-state-machine 0.46.0",
+ "sp-storage 22.0.0",
+ "sp-tracing 17.1.0",
+ "sp-version 40.0.0",
  "tempfile",
  "thiserror 1.0.65",
  "tokio",
@@ -20319,6 +20322,7 @@ dependencies = [
  "array-bytes 6.2.2",
  "assert_matches",
  "criterion",
+ "log",
  "num_cpus",
  "parity-scale-codec",
  "parking_lot 0.12.3",
@@ -20354,10 +20358,23 @@ dependencies = [
 name = "sc-executor-common"
 version = "0.43.0"
 dependencies = [
- "polkavm",
- "sc-allocator",
- "sp-maybe-compressed-blob",
- "sp-wasm-interface 24.0.0",
+ "polkavm 0.9.3",
+ "sc-allocator 28.0.0",
+ "sp-maybe-compressed-blob 11.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-wasm-interface 21.0.1",
+ "thiserror 1.0.65",
+ "wasm-instrument",
+]
+
+[[package]]
+name = "sc-executor-common"
+version = "0.39.0"
+dependencies = [
+ "parity-scale-codec",
+ "polkavm 0.24.0",
+ "sc-allocator 32.0.0",
+ "sp-maybe-compressed-blob 11.0.0",
+ "sp-wasm-interface 22.0.0",
  "thiserror 1.0.65",
  "wasm-instrument",
 ]

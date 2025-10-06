@@ -26,6 +26,7 @@ sp-wasm-interface.default-features = true
 sp-wasm-interface.workspace = true
 thiserror = { workspace = true }
 wasm-instrument = { workspace = true, default-features = true }
+codec = { package = "parity-scale-codec", version = "3.6.1" }
 
 [features]
 default = []
