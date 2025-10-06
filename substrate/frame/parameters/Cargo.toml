@@ -18,6 +18,7 @@ scale-info = { features = ["derive"], workspace = true }
 serde = { features = ["derive"], optional = true, workspace = true, default-features = true }
 sp-core.workspace = true
 sp-runtime.workspace = true
+cumulus-primitives-storage-weight-reclaim = { workspace = true, default-features = false}
 
 [dev-dependencies]
 pallet-balances = { default-features = true, workspace = true }
@@ -35,6 +36,7 @@ std = [
 	"serde",
 	"sp-core/std",
 	"sp-runtime/std",
+	"cumulus-primitives-storage-weight-reclaim/std",
 ]
 runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
