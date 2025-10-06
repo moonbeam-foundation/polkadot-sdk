@@ -36,6 +36,7 @@ wasmtime = { features = [
 	"parallel-compilation",
 	"pooling-allocator",
 ], workspace = true }
+codec = { package = "parity-scale-codec", version = "3.6.1" }
 
 # Here we include the rustix crate in the exactly same semver-compatible version as used by
 # wasmtime and enable its 'use-libc' flag.

@@ -21,9 +21,10 @@ name = "bench"
 harness = false
 
 [dependencies]
-parking_lot = { workspace = true, default-features = true }
-schnellru = { workspace = true }
-tracing = { workspace = true, default-features = true }
+parking_lot = "0.12.1"
+schnellru = "0.2.1"
+tracing = "0.1.29"
+log = "0.4.17"
 
 codec = { workspace = true, default-features = true }
 sc-executor-common.default-features = true
