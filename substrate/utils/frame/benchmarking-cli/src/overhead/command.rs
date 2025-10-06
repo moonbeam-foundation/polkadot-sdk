@@ -338,9 +338,9 @@ impl OverheadCmd {
 		&self,
 		chain_spec: &Option<Box<dyn ChainSpec>>,
 	) -> std::result::Result<(), (ErrorKind, String)> {
-		if chain_spec.is_none() &&
-			self.params.runtime.is_none() &&
-			self.shared_params.chain.is_none()
+		if chain_spec.is_none()
+			&& self.params.runtime.is_none()
+			&& self.shared_params.chain.is_none()
 		{
 			return Err((
 				ErrorKind::MissingRequiredArgument,
@@ -570,6 +570,7 @@ impl OverheadCmd {
 				offchain_indexing_api: false,
 				wasm_runtime_overrides: None,
 				no_genesis: false,
+				wasmtime_precompiled: None,
 				wasm_runtime_substitutes: Default::default(),
 				enable_import_proof_recording: chain_type.requires_proof_recording(),
 			},
