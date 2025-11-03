@@ -4490,6 +4490,7 @@ dependencies = [
  "cumulus-relay-chain-minimal-node",
  "cumulus-relay-chain-streams",
  "futures",
+ "polkadot-overseer",
  "polkadot-primitives",
  "prometheus",
  "sc-client-api",
@@ -4501,6 +4502,7 @@ dependencies = [
  "sc-service",
  "sc-sysinfo",
  "sc-telemetry",
+ "sc-tracing",
  "sc-transaction-pool",
  "sc-utils",
  "sp-api 37.0.0",
@@ -4510,6 +4512,7 @@ dependencies = [
  "sp-io 41.0.1",
  "sp-runtime 42.0.0",
  "sp-transaction-pool",
+ "sp-trie 40.0.0",
 ]
 
 [[package]]
@@ -14974,6 +14977,7 @@ dependencies = [
  "fatality",
  "futures",
  "futures-timer",
+ "itertools 0.11.0",
  "parity-scale-codec",
  "polkadot-node-network-protocol",
  "polkadot-node-primitives",
