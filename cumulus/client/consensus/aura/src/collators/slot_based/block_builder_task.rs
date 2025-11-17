@@ -212,7 +212,7 @@ where
 				continue;
 			};
 
-			let Ok(rp_data) = offset_relay_parent_find_descendants(
+			let Ok(Some(rp_data)) = offset_relay_parent_find_descendants(
 				&relay_client,
 				relay_best_hash,
 				relay_parent_offset,
@@ -495,7 +495,7 @@ async fn offset_relay_parent_find_descendants<RelayClient>(
 	relay_client: &RelayClient,
 	relay_best_block: RelayHash,
 	relay_parent_offset: u32,
-) -> Result<RelayParentData, ()>
+) -> Result<Option<RelayParentData>, ()>
 where
 	RelayClient: RelayChainInterface + Clone + 'static,
 {
@@ -506,7 +506,12 @@ where
 	};
 
 	if relay_parent_offset == 0 {
-		return Ok(RelayParentData::new(relay_header));
+		return Ok(Some(RelayParentData::new(relay_header)));
+	}
+
+	if sc_consensus_babe::contains_epoch_change::<RelayBlock>(&relay_header) {
+		tracing::debug!(target: LOG_TARGET, ?relay_best_block, relay_best_block_number = relay_header.number(), "Relay parent is in previous session.");
+		return Ok(None);
 	}
 
 	let mut required_ancestors: VecDeque<RelayHeader> = Default::default();
@@ -517,6 +522,10 @@ where
 		else {
 			return Err(())
 		};
+		if sc_consensus_babe::contains_epoch_change::<RelayBlock>(&next_header) {
+			tracing::debug!(target: LOG_TARGET, ?relay_best_block, ancestor = %next_header.hash(), ancestor_block_number = next_header.number(), "Ancestor of best block is in previous session.");
+			return Ok(None);
+		}
 		required_ancestors.push_front(next_header.clone());
 		relay_header = next_header;
 	}
@@ -533,7 +542,8 @@ where
 		num_descendants = required_ancestors.len(),
 		"Relay parent descendants."
 	);
-	Ok(RelayParentData::new_with_descendants(relay_parent, required_ancestors.into()))
+
+	Ok(Some(RelayParentData::new_with_descendants(relay_parent, required_ancestors.into())))
 }
 
 #[cfg(test)]
