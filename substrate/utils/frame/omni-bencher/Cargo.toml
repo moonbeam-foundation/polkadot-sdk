@@ -1,6 +1,6 @@
 [package]
 name = "frame-omni-bencher"
-version = "0.17.0"
+version = "0.17.2"
 description = "Freestanding benchmark runner for any Polkadot runtime."
 authors.workspace = true
 edition.workspace = true
@@ -26,12 +26,11 @@ sp-statement-store.workspace = true
 tracing-subscriber = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-# Jemalloc as global allocator prevents huge benchmark regression for storage-heavy extrinsics.
 polkadot-jemalloc-shim = { workspace = true, features = ["jemalloc-allocator"] }
 
 [dev-dependencies]
 assert_cmd = { workspace = true }
 cumulus-test-runtime = { workspace = true }
-sc-chain-spec = { workspace = true, default-features = false }
+sc-chain-spec = { default-features = false, workspace = true }
 sp-genesis-builder = { default-features = true, workspace = true }
 tempfile = { workspace = true }
