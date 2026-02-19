@@ -16765,8 +16765,6 @@ dependencies = [
  "polkadot-node-core-pvf",
  "polkadot-node-core-pvf-checker",
  "polkadot-node-core-pvf-common",
- "polkadot-node-core-pvf-execute-worker",
- "polkadot-node-core-pvf-prepare-worker",
  "polkadot-node-core-runtime-api",
  "polkadot-node-metrics",
  "polkadot-node-network-protocol",
@@ -22339,7 +22337,7 @@ dependencies = [
 
 [[package]]
 name = "snowbridge-core"
-version = "0.18.0"
+version = "0.18.1"
 dependencies = [
  "bp-relayers",
  "frame-support",
@@ -22440,7 +22438,7 @@ dependencies = [
 
 [[package]]
 name = "snowbridge-outbound-queue-primitives"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "alloy-core",
  "ethabi-decode",
