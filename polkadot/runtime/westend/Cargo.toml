@@ -229,6 +229,7 @@ std = [
 	"xcm-runtime-apis/std",
 	"xcm/std",
 ]
+force-xcm-processor = []
 runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
 	"frame-election-provider-support/runtime-benchmarks",
