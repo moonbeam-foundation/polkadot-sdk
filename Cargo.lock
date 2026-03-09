@@ -1359,7 +1359,7 @@ dependencies = [
 
 [[package]]
 name = "asset-hub-westend-runtime"
-version = "0.42.1"
+version = "0.42.2"
 dependencies = [
  "alloy-core",
  "asset-test-utils",
@@ -13621,7 +13621,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-society"
-version = "45.0.0"
+version = "45.1.0"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -13669,7 +13669,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-staking-async"
-version = "0.10.2"
+version = "0.10.3"
 dependencies = [
  "anyhow",
  "env_logger 0.11.3",
@@ -13850,7 +13850,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-staking-async-rc-client"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
