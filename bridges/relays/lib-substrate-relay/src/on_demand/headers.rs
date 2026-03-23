@@ -42,7 +42,7 @@ use crate::{
 		target::SubstrateFinalityTarget,
 		SubstrateFinalitySyncPipeline, RECENT_FINALITY_PROOFS_LIMIT,
 	},
-	finality_base::engine::Engine,
+	finality_base::engine::{is_outdated_authority_set_error, Engine},
 	on_demand::OnDemandRelay,
 	TransactionParams,
 };
@@ -154,12 +154,36 @@ impl<
 			let header_id = header.id();
 
 			// verify and optimize justification before including it into the call
-			let context = P::FinalityEngine::verify_and_optimize_proof(
+			let context = match P::FinalityEngine::verify_and_optimize_proof(
 				&self.target_client,
 				&header,
 				&mut proof,
 			)
-			.await?;
+			.await
+			{
+				Ok(context) => context,
+				Err(error) if is_outdated_authority_set_error(&error) => {
+					iterations += 1;
+					current_required_header = header_id.number().saturating_add(One::one());
+					if iterations < MAX_ITERATIONS {
+						tracing::debug!(
+							target: "bridge",
+							relay_task_name=%self.relay_task_name,
+							source=%P::SourceChain::NAME,
+							%required_header,
+							?header_id,
+							%iterations,
+							"Requested to prove header. Selected justification was signed by an \
+							outdated GRANDPA authority set. Going to select next header"
+						);
+
+						continue;
+					}
+
+					return Err(error);
+				},
+				Err(error) => return Err(error),
+			};
 
 			// now we have the header and its proof, but we want to minimize our losses, so let's
 			// check if we'll get the full refund for submitting this header
