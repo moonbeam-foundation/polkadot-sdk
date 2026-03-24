@@ -23914,6 +23914,7 @@ dependencies = [
  "async-trait",
  "parity-scale-codec",
  "scale-info",
+ "sp-api",
  "sp-core 39.0.0",
  "sp-inherents",
  "sp-runtime",
