@@ -164,18 +164,9 @@ pub enum PrecommitError {
 	DuplicateAuthorityVote,
 	/// The authority has provided an invalid signature.
 	InvalidAuthoritySignature,
-	/// The authority has provided a signature from the previous GRANDPA set.
-	OutdatedAuthoritySet,
 	/// The justification contains precommit for header that is not a descendant of the commit
 	/// header.
 	UnrelatedAncestryVote,
-}
-
-impl Error {
-	/// Returns true if the justification was signed by an outdated GRANDPA authority set.
-	pub fn is_outdated_authority_set(&self) -> bool {
-		matches!(self, Error::Precommit(PrecommitError::OutdatedAuthoritySet))
-	}
 }
 
 /// The context needed for validating GRANDPA finality proofs.
@@ -308,21 +299,18 @@ trait JustificationVerifier<Header: HeaderT> {
 			}
 
 			// verify authority signature
-			match sp_consensus_grandpa::check_message_signature_with_buffer(
+			if !sp_consensus_grandpa::check_message_signature_with_buffer(
 				&finality_grandpa::Message::Precommit(signed.precommit.clone()),
 				&signed.id,
 				&signed.signature,
 				justification.round,
 				context.authority_set_id,
 				&mut signature_buffer,
-			) {
-				sp_consensus_grandpa::SignatureResult::Valid => {},
-				sp_consensus_grandpa::SignatureResult::Invalid => {
-					self.process_invalid_signature_vote(precommit_idx).map_err(Error::Precommit)?;
-					continue
-				},
-				sp_consensus_grandpa::SignatureResult::OutdatedSet =>
-					return Err(Error::Precommit(PrecommitError::OutdatedAuthoritySet)),
+			)
+			.is_valid()
+			{
+				self.process_invalid_signature_vote(precommit_idx).map_err(Error::Precommit)?;
+				continue
 			}
 
 			// now we can count the vote since we know that it is valid

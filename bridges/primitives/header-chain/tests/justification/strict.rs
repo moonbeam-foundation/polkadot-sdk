@@ -149,27 +149,6 @@ fn justification_with_invalid_authority_signature_rejected() {
 }
 
 #[test]
-fn justification_signed_by_previous_authority_set_rejected() {
-	let params = JustificationGeneratorParams {
-		header: test_header(1),
-		round: TEST_GRANDPA_ROUND,
-		set_id: TEST_GRANDPA_SET_ID - 1,
-		authorities: vec![(ALICE, 1), (BOB, 1), (CHARLIE, 1)],
-		ancestors: 7,
-		forks: 3,
-	};
-
-	assert_eq!(
-		verify_justification::<TestHeader>(
-			header_id::<TestHeader>(1),
-			&verification_context(TEST_GRANDPA_SET_ID),
-			&make_justification_for_header::<TestHeader>(params),
-		),
-		Err(JustificationVerificationError::Precommit(PrecommitError::OutdatedAuthoritySet)),
-	);
-}
-
-#[test]
 fn justification_with_duplicate_votes_ancestry() {
 	let mut justification = make_default_justification::<TestHeader>(&test_header(1));
 	justification.votes_ancestries.push(justification.votes_ancestries[0].clone());

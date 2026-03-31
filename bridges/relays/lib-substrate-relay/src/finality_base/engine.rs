@@ -39,18 +39,6 @@ use sp_core::{storage::StorageKey, Bytes};
 use sp_runtime::{scale_info::TypeInfo, traits::Header, ConsensusEngineId};
 use std::{fmt::Debug, marker::PhantomData};
 
-const OUTDATED_AUTHORITY_SET_ERROR_PREFIX: &str = "bridge-grandpa-outdated-authority-set:";
-
-/// Returns true if the error indicates that the proof justification has been signed by a
-/// previous GRANDPA authority set and should be retried with a newer descendant header.
-pub(crate) fn is_outdated_authority_set_error(error: &SubstrateError) -> bool {
-	matches!(
-		error,
-		SubstrateError::Custom(message)
-			if message.starts_with(OUTDATED_AUTHORITY_SET_ERROR_PREFIX)
-	)
-}
-
 /// Finality engine, used by the Substrate chain.
 #[async_trait]
 pub trait Engine<C: Chain>: Send {
@@ -238,17 +226,12 @@ impl<C: ChainWithGrandpa> Engine<C> for Grandpa<C> {
 		)
 		.map(|_| verification_context)
 		.map_err(|e| {
-			let message = format!(
+			SubstrateError::Custom(format!(
 				"Failed to optimize {} GRANDPA jutification for header {:?}: {:?}",
 				C::NAME,
 				header.id(),
 				e,
-			);
-			if e.is_outdated_authority_set() {
-				SubstrateError::Custom(format!("{OUTDATED_AUTHORITY_SET_ERROR_PREFIX}{message}"))
-			} else {
-				SubstrateError::Custom(message)
-			}
+			))
 		})
 	}
 
