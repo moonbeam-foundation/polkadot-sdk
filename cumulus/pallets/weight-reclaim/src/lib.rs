@@ -33,7 +33,7 @@ use derive_where::derive_where;
 use frame_support::{
 	dispatch::{DispatchInfo, PostDispatchInfo},
 	pallet_prelude::Weight,
-	traits::Defensive,
+	traits::{CallMetadata, Defensive, GetCallMetadata},
 };
 use scale_info::TypeInfo;
 use sp_runtime::{
@@ -116,17 +116,18 @@ impl<T, S: core::fmt::Debug> core::fmt::Debug for StorageWeightReclaim<T, S> {
 impl<T: Config + Send + Sync, S: TransactionExtension<T::RuntimeCall>>
 	TransactionExtension<T::RuntimeCall> for StorageWeightReclaim<T, S>
 where
-	T::RuntimeCall: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
+	T::RuntimeCall:
+		Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + GetCallMetadata,
 {
 	const IDENTIFIER: &'static str = "StorageWeightReclaim<Use `metadata()`!>";
 
 	type Implicit = S::Implicit;
 
-	// Initial proof size and inner extension value.
-	type Val = (Option<u64>, S::Val);
+	// Call metadata, initial proof size and inner extension value.
+	type Val = (CallMetadata, Option<u64>, S::Val);
 
-	// Initial proof size and inner extension pre.
-	type Pre = (Option<u64>, S::Pre);
+	// Call metadata, initial proof size and inner extension pre.
+	type Pre = (CallMetadata, Option<u64>, S::Pre);
 
 	fn implicit(&self) -> Result<Self::Implicit, TransactionValidityError> {
 		self.0.implicit()
@@ -156,11 +157,12 @@ where
 		inherited_implication: &impl Implication,
 		source: TransactionSource,
 	) -> Result<(ValidTransaction, Self::Val, T::RuntimeOrigin), TransactionValidityError> {
+		let call_metadata = call.get_call_metadata();
 		let proof_size = get_proof_size();
 
 		self.0
 			.validate(origin, call, info, len, self_implicit, inherited_implication, source)
-			.map(|(validity, val, origin)| (validity, (proof_size, val), origin))
+			.map(|(validity, val, origin)| (validity, (call_metadata, proof_size, val), origin))
 	}
 
 	fn prepare(
@@ -171,8 +173,10 @@ where
 		info: &DispatchInfoOf<T::RuntimeCall>,
 		len: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
-		let (proof_size, inner_val) = val;
-		self.0.prepare(inner_val, origin, call, info, len).map(|pre| (proof_size, pre))
+		let (call_metadata, proof_size, inner_val) = val;
+		self.0
+			.prepare(inner_val, origin, call, info, len)
+			.map(|pre| (call_metadata, proof_size, pre))
 	}
 
 	fn post_dispatch_details(
@@ -182,7 +186,7 @@ where
 		len: usize,
 		result: &DispatchResult,
 	) -> Result<Weight, TransactionValidityError> {
-		let (proof_size_before_dispatch, inner_pre) = pre;
+		let (call_metadata, proof_size_before_dispatch, inner_pre) = pre;
 
 		let mut post_info_with_inner = *post_info;
 		S::post_dispatch(inner_pre, info, &mut post_info_with_inner, len, result)?;
@@ -203,7 +207,7 @@ where
 		let Some(proof_size_after_dispatch) = get_proof_size().defensive_proof(
 			"Proof recording enabled during prepare, now disabled. This should not happen.",
 		) else {
-			return Ok(inner_refund)
+			return Ok(inner_refund);
 		};
 
 		// The consumed proof size as measured by the host.
@@ -218,16 +222,21 @@ where
 
 		let benchmarked_actual_proof_size = benchmarked_actual_weight.proof_size();
 		if benchmarked_actual_proof_size < measured_proof_size {
-			log::error!(
+			log::warn!(
 				target: LOG_TARGET,
 				"Benchmarked storage weight smaller than consumed storage weight. \
-				benchmarked: {benchmarked_actual_proof_size} consumed: {measured_proof_size}"
+				call: {}::{} benchmarked: {benchmarked_actual_proof_size} \
+				consumed: {measured_proof_size}",
+				call_metadata.pallet_name,
+				call_metadata.function_name,
 			);
 		} else {
 			log::trace!(
 				target: LOG_TARGET,
-				"Reclaiming storage weight. benchmarked: {benchmarked_actual_proof_size},
-				consumed: {measured_proof_size}"
+				"Reclaiming storage weight. call: {}::{} \
+				benchmarked: {benchmarked_actual_proof_size}, consumed: {measured_proof_size}",
+				call_metadata.pallet_name,
+				call_metadata.function_name,
 			);
 		}
 
