@@ -23,8 +23,8 @@ use crate::{
 use clap::Args;
 use sc_network::{
 	config::{
-		NetworkConfiguration, NodeKeyConfig, NonReservedPeerMode, SetConfig, TransportConfig,
-		DEFAULT_IDLE_CONNECTION_TIMEOUT,
+		DnsMultiaddrPolicy, NetworkConfiguration, NodeKeyConfig, NonReservedPeerMode, SetConfig,
+		TransportConfig, DEFAULT_IDLE_CONNECTION_TIMEOUT,
 	},
 	multiaddr::Protocol,
 };
@@ -130,6 +130,19 @@ pub struct NetworkParams {
 	/// `Local`/`Development` and false otherwise.
 	#[arg(long)]
 	pub discover_local: bool,
+
+	/// Deny DNS multiaddresses learned from untrusted peers.
+	///
+	/// DNS multiaddresses from chain-spec bootnodes, `--bootnodes`, and `--reserved-nodes` remain
+	/// allowed unless denied by `--deny-dns-suffixes`.
+	#[arg(long)]
+	pub deny_untrusted_dns_multiaddrs: bool,
+
+	/// Deny DNS multiaddresses with the given suffixes.
+	///
+	/// Suffixes are case-insensitive and may be passed with or without a leading dot.
+	#[arg(long, value_name = "SUFFIX", num_args = 1..)]
+	pub deny_dns_suffixes: Vec<String>,
 
 	/// Require iterative Kademlia DHT queries to use disjoint paths.
 	///
@@ -240,15 +253,16 @@ impl NetworkParams {
 		// Activate if the user explicitly requested local discovery, `--dev` is given or the
 		// chain type is `Local`/`Development`
 		let allow_non_globals_in_dht =
-			self.discover_local ||
-				is_dev || matches!(chain_type, ChainType::Local | ChainType::Development);
+			self.discover_local
+				|| is_dev || matches!(chain_type, ChainType::Local | ChainType::Development);
 
 		let allow_private_ip = match (self.allow_private_ip, self.no_private_ip) {
 			(true, true) => unreachable!("`*_private_ip` flags are mutually exclusive; qed"),
 			(true, false) => true,
 			(false, true) => false,
-			(false, false) =>
-				is_dev || matches!(chain_type, ChainType::Local | ChainType::Development),
+			(false, false) => {
+				is_dev || matches!(chain_type, ChainType::Local | ChainType::Development)
+			},
 		};
 
 		NetworkConfiguration {
@@ -280,6 +294,10 @@ impl NetworkParams {
 			min_peers_to_start_warp_sync: None,
 			enable_dht_random_walk: !self.reserved_only,
 			allow_non_globals_in_dht,
+			dns_multiaddr_policy: DnsMultiaddrPolicy::new(
+				!self.deny_untrusted_dns_multiaddrs,
+				self.deny_dns_suffixes.clone(),
+			),
 			kademlia_disjoint_query_paths: self.kademlia_disjoint_query_paths,
 			kademlia_replication_factor: self.kademlia_replication_factor,
 			ipfs_server: self.ipfs_server,

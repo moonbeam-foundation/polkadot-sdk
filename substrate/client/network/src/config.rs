@@ -670,6 +670,9 @@ pub struct NetworkConfiguration {
 	/// Should we insert non-global addresses into the DHT?
 	pub allow_non_globals_in_dht: bool,
 
+	/// Policy for DNS-based multiaddresses.
+	pub dns_multiaddr_policy: DnsMultiaddrPolicy,
+
 	/// Require iterative Kademlia DHT queries to use disjoint paths for increased resiliency in
 	/// the presence of potentially adversarial nodes.
 	pub kademlia_disjoint_query_paths: bool,
@@ -714,6 +717,7 @@ impl NetworkConfiguration {
 			sync_mode: SyncMode::Full,
 			enable_dht_random_walk: true,
 			allow_non_globals_in_dht: false,
+			dns_multiaddr_policy: DnsMultiaddrPolicy::default(),
 			kademlia_disjoint_query_paths: false,
 			kademlia_replication_factor: NonZeroUsize::new(DEFAULT_KADEMLIA_REPLICATION_FACTOR)
 				.expect("value is a constant; constant is non-zero; qed."),
@@ -938,9 +942,75 @@ impl<B: BlockT + 'static, H: ExHashT, N: NetworkBackend<B, H>> FullNetworkConfig
 		// Remove possible duplicates.
 		addresses.sort();
 		addresses.dedup();
+		addresses
+			.retain(|(_, address)| self.network_config.dns_multiaddr_policy.allows(address, true));
 
 		addresses
 	}
+}
+
+/// Policy for DNS-based multiaddresses.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DnsMultiaddrPolicy {
+	/// Whether DNS multiaddresses learned from untrusted peers are allowed.
+	pub allow_untrusted_dns: bool,
+	/// DNS suffixes that are always denied.
+	pub denied_suffixes: Vec<String>,
+}
+
+impl Default for DnsMultiaddrPolicy {
+	fn default() -> Self {
+		Self { allow_untrusted_dns: true, denied_suffixes: Vec::new() }
+	}
+}
+
+impl DnsMultiaddrPolicy {
+	/// Create a DNS multiaddress policy.
+	pub fn new(allow_untrusted_dns: bool, denied_suffixes: Vec<String>) -> Self {
+		Self {
+			allow_untrusted_dns,
+			denied_suffixes: denied_suffixes
+				.into_iter()
+				.map(|suffix| suffix.trim().trim_start_matches('.').to_ascii_lowercase())
+				.filter(|suffix| !suffix.is_empty())
+				.collect(),
+		}
+	}
+
+	/// Returns true if the address is allowed by this policy.
+	pub fn allows<T: fmt::Display + ?Sized>(&self, address: &T, is_trusted: bool) -> bool {
+		let Some(dns_name) = dns_name(&address.to_string()) else {
+			return true;
+		};
+
+		if self
+			.denied_suffixes
+			.iter()
+			.any(|suffix| dns_name_matches_suffix(&dns_name, suffix))
+		{
+			return false;
+		}
+
+		is_trusted || self.allow_untrusted_dns
+	}
+}
+
+fn dns_name(address: &str) -> Option<String> {
+	let mut protocols = address.split('/').filter(|part| !part.is_empty());
+
+	while let Some(protocol) = protocols.next() {
+		if matches!(protocol, "dns" | "dns4" | "dns6") {
+			return protocols
+				.next()
+				.map(|name| name.trim_end_matches('.').to_ascii_lowercase());
+		}
+	}
+
+	None
+}
+
+fn dns_name_matches_suffix(name: &str, suffix: &str) -> bool {
+	name == suffix || name.strip_suffix(suffix).is_some_and(|prefix| prefix.ends_with('.'))
 }
 
 /// Network backend type.
@@ -972,6 +1042,31 @@ mod tests {
 
 	fn secret_bytes(kp: ed25519::Keypair) -> Vec<u8> {
 		kp.secret().to_bytes().into()
+	}
+
+	#[test]
+	fn dns_multiaddr_policy_allows_default_dns() {
+		let policy = DnsMultiaddrPolicy::default();
+
+		assert!(policy.allows(&"/dns4/example.com/tcp/30333", false));
+		assert!(policy.allows(&"/ip4/198.51.100.19/tcp/30333", false));
+	}
+
+	#[test]
+	fn dns_multiaddr_policy_can_deny_untrusted_dns() {
+		let policy = DnsMultiaddrPolicy::new(false, Vec::new());
+
+		assert!(!policy.allows(&"/dns4/example.com/tcp/30333", false));
+		assert!(policy.allows(&"/dns4/example.com/tcp/30333", true));
+	}
+
+	#[test]
+	fn dns_multiaddr_policy_denies_suffixes_for_all_sources() {
+		let policy = DnsMultiaddrPolicy::new(true, vec![".onion".into()]);
+
+		assert!(!policy.allows(&"/dns4/example.onion/tcp/30333", false));
+		assert!(!policy.allows(&"/dns4/sub.example.ONION./tcp/30333", true));
+		assert!(policy.allows(&"/dns4/notonion.example/tcp/30333", false));
 	}
 
 	#[test]

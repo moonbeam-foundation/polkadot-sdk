@@ -48,7 +48,7 @@
 
 use crate::{
 	config::{
-		ProtocolId, KADEMLIA_MAX_PROVIDER_KEYS, KADEMLIA_PROVIDER_RECORD_TTL,
+		DnsMultiaddrPolicy, ProtocolId, KADEMLIA_MAX_PROVIDER_KEYS, KADEMLIA_PROVIDER_RECORD_TTL,
 		KADEMLIA_PROVIDER_REPUBLISH_INTERVAL,
 	},
 	utils::LruHashSet,
@@ -120,6 +120,7 @@ pub struct DiscoveryConfig {
 	dht_random_walk: bool,
 	allow_private_ip: bool,
 	allow_non_globals_in_dht: bool,
+	dns_multiaddr_policy: DnsMultiaddrPolicy,
 	discovery_only_if_under_num: u64,
 	enable_mdns: bool,
 	kademlia_disjoint_query_paths: bool,
@@ -137,6 +138,7 @@ impl DiscoveryConfig {
 			dht_random_walk: true,
 			allow_private_ip: true,
 			allow_non_globals_in_dht: false,
+			dns_multiaddr_policy: DnsMultiaddrPolicy::default(),
 			discovery_only_if_under_num: std::u64::MAX,
 			enable_mdns: false,
 			kademlia_disjoint_query_paths: false,
@@ -178,6 +180,12 @@ impl DiscoveryConfig {
 	/// Should non-global addresses be inserted to the DHT?
 	pub fn allow_non_globals_in_dht(&mut self, value: bool) -> &mut Self {
 		self.allow_non_globals_in_dht = value;
+		self
+	}
+
+	/// Set the DNS multiaddress policy.
+	pub fn dns_multiaddr_policy(&mut self, policy: DnsMultiaddrPolicy) -> &mut Self {
+		self.dns_multiaddr_policy = policy;
 		self
 	}
 
@@ -223,6 +231,7 @@ impl DiscoveryConfig {
 			dht_random_walk,
 			allow_private_ip,
 			allow_non_globals_in_dht,
+			dns_multiaddr_policy,
 			discovery_only_if_under_num,
 			enable_mdns,
 			kademlia_disjoint_query_paths,
@@ -296,6 +305,7 @@ impl DiscoveryConfig {
 				Toggle::from(None)
 			},
 			allow_non_globals_in_dht,
+			dns_multiaddr_policy,
 			known_external_addresses: LruHashSet::new(
 				NonZeroUsize::new(MAX_KNOWN_EXTERNAL_ADDRESSES)
 					.expect("value is a constant; constant is non-zero; qed."),
@@ -338,6 +348,8 @@ pub struct DiscoveryBehaviour {
 	discovery_only_if_under_num: u64,
 	/// Should non-global addresses be added to the DHT?
 	allow_non_globals_in_dht: bool,
+	/// Policy for DNS-based multiaddresses.
+	dns_multiaddr_policy: DnsMultiaddrPolicy,
 	/// A cache of discovered external addresses. Only used for logging purposes.
 	known_external_addresses: LruHashSet<Multiaddr>,
 	/// Records to publish per QueryId.
@@ -377,9 +389,18 @@ impl DiscoveryBehaviour {
 	///
 	/// If we didn't know this address before, also generates a `Discovered` event.
 	pub fn add_known_address(&mut self, peer_id: PeerId, addr: Multiaddr) {
+		if !self.dns_multiaddr_policy.allows(&addr, true) {
+			trace!(
+				target: LOG_TARGET,
+				"Ignoring configured DNS address {} for {} due to DNS multiaddr policy.",
+				addr, peer_id
+			);
+			return;
+		}
+
 		let addrs_list = self.ephemeral_addresses.entry(peer_id).or_default();
 		if addrs_list.contains(&addr) {
-			return
+			return;
 		}
 
 		if let Some(k) = self.kademlia.as_mut() {
@@ -407,7 +428,16 @@ impl DiscoveryBehaviour {
 					target: LOG_TARGET,
 					"Ignoring self-reported non-global address {} from {}.", addr, peer_id
 				);
-				return
+				return;
+			}
+
+			if !self.dns_multiaddr_policy.allows(&addr, false) {
+				trace!(
+					target: LOG_TARGET,
+					"Ignoring self-reported DNS address {} from {} due to DNS multiaddr policy.",
+					addr, peer_id
+				);
+				return;
 			}
 
 			// The supported protocols must include the chain-based Kademlia protocol.
@@ -426,7 +456,7 @@ impl DiscoveryBehaviour {
 					"Ignoring self-reported address {} from {} as remote node is not part of the \
 					 Kademlia DHT supported by the local node.", addr, peer_id,
 				);
-				return
+				return;
 			}
 
 			trace!(
@@ -583,8 +613,9 @@ impl DiscoveryBehaviour {
 		let ip = match addr.iter().next() {
 			Some(Protocol::Ip4(ip)) => IpNetwork::from(ip),
 			Some(Protocol::Ip6(ip)) => IpNetwork::from(ip),
-			Some(Protocol::Dns(_)) | Some(Protocol::Dns4(_)) | Some(Protocol::Dns6(_)) =>
-				return true,
+			Some(Protocol::Dns(_)) | Some(Protocol::Dns4(_)) | Some(Protocol::Dns6(_)) => {
+				return true
+			},
 			_ => return false,
 		};
 		ip.is_global()
@@ -758,6 +789,8 @@ impl NetworkBehaviour for DiscoveryBehaviour {
 				});
 			}
 
+			list_to_filter.retain(|addr| self.dns_multiaddr_policy.allows(addr, false));
+
 			list_to_filter.into_iter().for_each(|address| {
 				list.insert_if_absent(address);
 			});
@@ -836,13 +869,15 @@ impl NetworkBehaviour for DiscoveryBehaviour {
 							"🔍 Discovered external address for a peer that is not us: {addr}",
 						);
 						// Ensure this address is not propagated to kademlia.
-						return
+						return;
 					}
 				} else {
 					address.push(Protocol::P2p(self.local_peer_id));
 				}
 
-				if Self::can_add_to_dht(&address) {
+				if Self::can_add_to_dht(&address)
+					&& self.dns_multiaddr_policy.allows(&address, false)
+				{
 					// NOTE: we might re-discover the same address multiple times
 					// in which case we just want to refrain from logging.
 					if self.known_external_addresses.insert(address.clone()) {
@@ -879,7 +914,7 @@ impl NetworkBehaviour for DiscoveryBehaviour {
 	fn poll(&mut self, cx: &mut Context) -> Poll<ToSwarm<Self::ToSwarm, THandlerInEvent<Self>>> {
 		// Immediately process the content of `discovered`.
 		if let Some(ev) = self.pending_events.pop_front() {
-			return Poll::Ready(ToSwarm::GenerateEvent(ev))
+			return Poll::Ready(ToSwarm::GenerateEvent(ev));
 		}
 
 		// Poll the stream that fires when we need to start a random Kademlia query.
@@ -913,7 +948,7 @@ impl NetworkBehaviour for DiscoveryBehaviour {
 
 					if actually_started {
 						let ev = DiscoveryOut::RandomKademliaStarted;
-						return Poll::Ready(ToSwarm::GenerateEvent(ev))
+						return Poll::Ready(ToSwarm::GenerateEvent(ev));
 					}
 				}
 			}
@@ -924,11 +959,11 @@ impl NetworkBehaviour for DiscoveryBehaviour {
 				ToSwarm::GenerateEvent(ev) => match ev {
 					KademliaEvent::RoutingUpdated { peer, .. } => {
 						let ev = DiscoveryOut::Discovered(peer);
-						return Poll::Ready(ToSwarm::GenerateEvent(ev))
+						return Poll::Ready(ToSwarm::GenerateEvent(ev));
 					},
 					KademliaEvent::UnroutablePeer { peer, .. } => {
 						let ev = DiscoveryOut::UnroutablePeer(peer);
-						return Poll::Ready(ToSwarm::GenerateEvent(ev))
+						return Poll::Ready(ToSwarm::GenerateEvent(ev));
 					},
 					KademliaEvent::RoutablePeer { .. } => {
 						// Generate nothing, because the address was not added to the routing table,
@@ -938,7 +973,7 @@ impl NetworkBehaviour for DiscoveryBehaviour {
 						// We are not interested in this event at the moment.
 					},
 					KademliaEvent::InboundRequest { request } => match request {
-						libp2p::kad::InboundRequest::PutRecord { record: Some(record), .. } =>
+						libp2p::kad::InboundRequest::PutRecord { record: Some(record), .. } => {
 							return Poll::Ready(ToSwarm::GenerateEvent(
 								DiscoveryOut::PutRecordRequest(
 									record.key,
@@ -946,7 +981,8 @@ impl NetworkBehaviour for DiscoveryBehaviour {
 									record.publisher.map(Into::into),
 									record.expires,
 								),
-							)),
+							))
+						},
 						_ => {},
 					},
 					KademliaEvent::OutboundQueryProgressed {
@@ -968,7 +1004,7 @@ impl NetworkBehaviour for DiscoveryBehaviour {
 									 a peer ID: {:?}",
 									HexDisplay::from(&key),
 								);
-								continue
+								continue;
 							},
 						};
 
@@ -999,7 +1035,7 @@ impl NetworkBehaviour for DiscoveryBehaviour {
 							)
 						};
 
-						return Poll::Ready(ToSwarm::GenerateEvent(ev))
+						return Poll::Ready(ToSwarm::GenerateEvent(ev));
 					},
 					KademliaEvent::OutboundQueryProgressed {
 						result: QueryResult::GetRecord(res),
@@ -1051,7 +1087,7 @@ impl NetworkBehaviour for DiscoveryBehaviour {
 								// We always need to remove the record to not leak any data!
 								if let Some(record) = self.records_to_publish.remove(&id) {
 									if cache_candidates.is_empty() {
-										continue
+										continue;
 									}
 
 									// Put the record to the `cache_candidates` that are nearest to
@@ -1065,7 +1101,7 @@ impl NetworkBehaviour for DiscoveryBehaviour {
 									}
 								}
 
-								continue
+								continue;
 							},
 							Err(e @ libp2p::kad::GetRecordError::NotFound { .. }) => {
 								trace!(
@@ -1090,7 +1126,7 @@ impl NetworkBehaviour for DiscoveryBehaviour {
 								)
 							},
 						};
-						return Poll::Ready(ToSwarm::GenerateEvent(ev))
+						return Poll::Ready(ToSwarm::GenerateEvent(ev));
 					},
 					KademliaEvent::OutboundQueryProgressed {
 						result: QueryResult::GetProviders(res),
@@ -1136,7 +1172,7 @@ impl NetworkBehaviour for DiscoveryBehaviour {
 										target: LOG_TARGET,
 										"No key found for `GET_PROVIDERS` query {id:?}. This is a bug.",
 									);
-									continue
+									continue;
 								}
 							},
 							Err(GetProvidersError::Timeout { key, closest_peers: _ }) => {
@@ -1153,7 +1189,7 @@ impl NetworkBehaviour for DiscoveryBehaviour {
 								)
 							},
 						};
-						return Poll::Ready(ToSwarm::GenerateEvent(ev))
+						return Poll::Ready(ToSwarm::GenerateEvent(ev));
 					},
 					KademliaEvent::OutboundQueryProgressed {
 						result: QueryResult::PutRecord(res),
@@ -1182,7 +1218,7 @@ impl NetworkBehaviour for DiscoveryBehaviour {
 								)
 							},
 						};
-						return Poll::Ready(ToSwarm::GenerateEvent(ev))
+						return Poll::Ready(ToSwarm::GenerateEvent(ev));
 					},
 					KademliaEvent::OutboundQueryProgressed {
 						result: QueryResult::RepublishRecord(res),
@@ -1229,7 +1265,7 @@ impl NetworkBehaviour for DiscoveryBehaviour {
 								)
 							},
 						};
-						return Poll::Ready(ToSwarm::GenerateEvent(ev))
+						return Poll::Ready(ToSwarm::GenerateEvent(ev));
 					},
 					KademliaEvent::OutboundQueryProgressed {
 						result: QueryResult::Bootstrap(res),
@@ -1267,14 +1303,14 @@ impl NetworkBehaviour for DiscoveryBehaviour {
 				ToSwarm::GenerateEvent(event) => match event {
 					mdns::Event::Discovered(list) => {
 						if self.num_connections >= self.discovery_only_if_under_num {
-							continue
+							continue;
 						}
 
 						self.pending_events.extend(
 							list.into_iter().map(|(peer_id, _)| DiscoveryOut::Discovered(peer_id)),
 						);
 						if let Some(ev) = self.pending_events.pop_front() {
-							return Poll::Ready(ToSwarm::GenerateEvent(ev))
+							return Poll::Ready(ToSwarm::GenerateEvent(ev));
 						}
 					},
 					mdns::Event::Expired(_) => {},
@@ -1416,8 +1452,8 @@ mod tests {
 							match e {
 								SwarmEvent::Behaviour(behavior) => {
 									match behavior {
-										DiscoveryOut::UnroutablePeer(other) |
-										DiscoveryOut::Discovered(other) => {
+										DiscoveryOut::UnroutablePeer(other)
+										| DiscoveryOut::Discovered(other) => {
 											// Call `add_self_reported_address` to simulate identify
 											// happening.
 											let addr = swarms
@@ -1464,12 +1500,12 @@ mod tests {
 								// ignore non Behaviour events
 								_ => {},
 							}
-							continue 'polling
+							continue 'polling;
 						},
 						_ => {},
 					}
 				}
-				break
+				break;
 			}
 
 			if to_discover.iter().all(|l| l.is_empty()) {

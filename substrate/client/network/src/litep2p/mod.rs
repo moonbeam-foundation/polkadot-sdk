@@ -20,8 +20,8 @@
 
 use crate::{
 	config::{
-		FullNetworkConfiguration, IncomingRequest, NodeKeyConfig, NotificationHandshake, Params,
-		SetConfig, TransportConfig,
+		DnsMultiaddrPolicy, FullNetworkConfiguration, IncomingRequest, NodeKeyConfig,
+		NotificationHandshake, Params, SetConfig, TransportConfig,
 	},
 	error::Error,
 	event::{DhtEvent, Event},
@@ -177,6 +177,9 @@ pub struct Litep2pNetworkBackend {
 	/// Discovery.
 	discovery: Discovery,
 
+	/// Policy for DNS-based multiaddresses.
+	dns_multiaddr_policy: DnsMultiaddrPolicy,
+
 	/// Number of connected peers.
 	num_connected: Arc<AtomicUsize>,
 
@@ -206,19 +209,20 @@ impl Litep2pNetworkBackend {
 			.into_iter()
 			.filter_map(|address| match address.iter().next() {
 				Some(
-					Protocol::Dns(_) |
-					Protocol::Dns4(_) |
-					Protocol::Dns6(_) |
-					Protocol::Ip6(_) |
-					Protocol::Ip4(_),
+					Protocol::Dns(_)
+					| Protocol::Dns4(_)
+					| Protocol::Dns6(_)
+					| Protocol::Ip6(_)
+					| Protocol::Ip4(_),
 				) => match address.iter().find(|protocol| std::matches!(protocol, Protocol::P2p(_)))
 				{
 					Some(Protocol::P2p(multihash)) => PeerId::from_multihash(multihash.into())
 						.map_or(None, |peer| Some((peer, Some(address)))),
 					_ => None,
 				},
-				Some(Protocol::P2p(multihash)) =>
-					PeerId::from_multihash(multihash.into()).map_or(None, |peer| Some((peer, None))),
+				Some(Protocol::P2p(multihash)) => {
+					PeerId::from_multihash(multihash.into()).map_or(None, |peer| Some((peer, None)))
+				},
 				_ => None,
 			})
 			.fold(HashMap::new(), |mut acc, (peer, maybe_address)| {
@@ -236,15 +240,20 @@ impl Litep2pNetworkBackend {
 			.filter_map(|(peer, addresses)| {
 				// `peers` contained multiaddress in the form `/p2p/<peer ID>`
 				if addresses.is_empty() {
-					return Some(peer)
+					return Some(peer);
 				}
+
+				let addresses = addresses
+					.into_iter()
+					.filter(|address| self.dns_multiaddr_policy.allows(address, true))
+					.collect::<Vec<_>>();
 
 				if self.litep2p.add_known_address(peer.into(), addresses.clone().into_iter()) == 0 {
 					log::warn!(
 						target: LOG_TARGET,
 						"couldn't add any addresses for {peer:?} and it won't be added as reserved peer",
 					);
-					return None
+					return None;
 				}
 
 				self.peerstore_handle.add_known_peer(peer);
@@ -294,14 +303,15 @@ impl Litep2pNetworkBackend {
 							"unknown protocol {protocol:?}, ignoring {address:?}",
 						);
 
-						return None
+						return None;
 					},
 				}
 
 				match iter.next() {
 					Some(Protocol::Tcp(_)) => match iter.next() {
-						Some(Protocol::Ws(_) | Protocol::Wss(_)) =>
-							Some((None, Some(address.clone()))),
+						Some(Protocol::Ws(_) | Protocol::Wss(_)) => {
+							Some((None, Some(address.clone())))
+						},
 						Some(Protocol::P2p(_)) | None => Some((Some(address.clone()), None)),
 						protocol => {
 							log::error!(
@@ -393,6 +403,8 @@ impl<B: BlockT + 'static, H: ExHashT> NetworkBackend<B, H> for Litep2pNetworkBac
 		let mut config_builder =
 			Self::configure_transport(&params.network_config).with_keypair(keypair.clone());
 		let known_addresses = params.network_config.known_addresses();
+		let dns_multiaddr_policy =
+			params.network_config.network_config.dns_multiaddr_policy.clone();
 		let peer_store_handle = params.network_config.peer_store_handle();
 		let executor = Arc::new(Litep2pExecutor { executor: params.executor });
 
@@ -484,8 +496,9 @@ impl<B: BlockT + 'static, H: ExHashT> NetworkBackend<B, H> for Litep2pNetworkBac
 				use sc_network_types::multiaddr::Protocol;
 
 				let address = match address.iter().last() {
-					Some(Protocol::Ws(_) | Protocol::Wss(_) | Protocol::Tcp(_)) =>
-						address.with(Protocol::P2p(peer.into())),
+					Some(Protocol::Ws(_) | Protocol::Wss(_) | Protocol::Tcp(_)) => {
+						address.with(Protocol::P2p(peer.into()))
+					},
 					Some(Protocol::P2p(_)) => address,
 					_ => return acc,
 				};
@@ -579,6 +592,7 @@ impl<B: BlockT + 'static, H: ExHashT> NetworkBackend<B, H> for Litep2pNetworkBac
 			peerset_handles: notif_protocols,
 			num_connected,
 			discovery,
+			dns_multiaddr_policy,
 			pending_queries: HashMap::new(),
 			peerstore_handle: peer_store_handle,
 			block_announce_protocol,
@@ -729,6 +743,14 @@ impl<B: BlockT + 'static, H: ExHashT> NetworkBackend<B, H> for Litep2pNetworkBac
 								address.push(Protocol::P2p(litep2p::PeerId::from(peer).into()));
 							}
 
+							if !self.dns_multiaddr_policy.allows(&address, true) {
+								log::trace!(
+									target: LOG_TARGET,
+									"ignoring configured DNS address {address} for {peer:?} due to DNS multiaddr policy."
+								);
+								continue;
+							}
+
 							if self.litep2p.add_known_address(peer.into(), iter::once(address.clone())) > 0 {
 								// libp2p backend generates `DiscoveryOut::Discovered(peer_id)`
 								// event when a new address is added for a peer, which leads to the
@@ -792,7 +814,11 @@ impl<B: BlockT + 'static, H: ExHashT> NetworkBackend<B, H> for Litep2pNetworkBac
 					Some(DiscoveryEvent::Discovered { addresses }) => {
 						// if at least one address was added for the peer, report the peer to `Peerstore`
 						for (peer, addresses) in Litep2pNetworkBackend::parse_addresses(addresses.into_iter()) {
-							if self.litep2p.add_known_address(peer.into(), addresses.clone().into_iter()) > 0 {
+							let addresses = addresses
+								.into_iter()
+								.filter(|address| self.dns_multiaddr_policy.allows(address, false))
+								.collect::<Vec<_>>();
+							if self.litep2p.add_known_address(peer.into(), addresses.into_iter()) > 0 {
 								self.peerstore_handle.add_known_peer(peer);
 							}
 						}
@@ -938,7 +964,13 @@ impl<B: BlockT + 'static, H: ExHashT> NetworkBackend<B, H> for Litep2pNetworkBac
 								// Consider also looking the addresses of providers up with `FIND_NODE`
 								// query, as it can yield more up to date addresses.
 								providers.iter().for_each(|p| {
-									self.litep2p.add_known_address(p.peer, p.addresses.clone().into_iter());
+									self.litep2p.add_known_address(
+										p.peer,
+										p.addresses
+											.clone()
+											.into_iter()
+											.filter(|address| self.dns_multiaddr_policy.allows(address, false)),
+									);
 								});
 
 								self.event_streams.send(Event::Dht(
