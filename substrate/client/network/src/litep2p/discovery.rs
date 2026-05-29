@@ -20,8 +20,8 @@
 
 use crate::{
 	config::{
-		NetworkConfiguration, ProtocolId, KADEMLIA_MAX_PROVIDER_KEYS, KADEMLIA_PROVIDER_RECORD_TTL,
-		KADEMLIA_PROVIDER_REPUBLISH_INTERVAL,
+		DnsMultiaddrPolicy, NetworkConfiguration, ProtocolId, KADEMLIA_MAX_PROVIDER_KEYS,
+		KADEMLIA_PROVIDER_RECORD_TTL, KADEMLIA_PROVIDER_REPUBLISH_INTERVAL,
 	},
 	peer_store::PeerStoreProvider,
 };
@@ -242,6 +242,9 @@ pub struct Discovery {
 	/// Allow non-global addresses in the DHT.
 	allow_non_global_addresses: bool,
 
+	/// Policy for DNS-based multiaddresses.
+	dns_multiaddr_policy: DnsMultiaddrPolicy,
+
 	/// Protocols supported by the local node.
 	local_protocols: HashSet<ProtocolName>,
 
@@ -340,6 +343,7 @@ impl Discovery {
 				duration_to_next_find_query: Duration::from_secs(1),
 				address_confirmations: LruMap::new(ByLength::new(MAX_EXTERNAL_ADDRESSES)),
 				allow_non_global_addresses: config.allow_non_globals_in_dht,
+				dns_multiaddr_policy: config.dns_multiaddr_policy.clone(),
 				public_addresses: config.public_addresses.iter().cloned().map(Into::into).collect(),
 				next_kad_query: Some(Delay::new(KADEMLIA_QUERY_INTERVAL)),
 				local_protocols: HashSet::from_iter([kademlia_protocol_name(
@@ -384,6 +388,15 @@ impl Discovery {
 					log::trace!(
 						target: LOG_TARGET,
 						"ignoring self-reported non-global address {address} from {peer}."
+					);
+
+					return None;
+				}
+
+				if !self.dns_multiaddr_policy.allows(&address, false) {
+					log::trace!(
+						target: LOG_TARGET,
+						"ignoring self-reported DNS address {address} from {peer} due to DNS multiaddr policy."
 					);
 
 					return None;
@@ -535,6 +548,15 @@ impl Discovery {
 			return (false, None);
 		}
 
+		if !self.dns_multiaddr_policy.allows(address, false) {
+			log::trace!(
+				target: LOG_TARGET,
+				"ignoring externally reported DNS address {address} from {peer} due to DNS multiaddr policy."
+			);
+
+			return (false, None);
+		}
+
 		// is the address one of our known addresses
 		if self
 			.listen_addresses
@@ -555,8 +577,8 @@ impl Discovery {
 				}
 			},
 			None => {
-				let oldest = (self.address_confirmations.len() >=
-					self.address_confirmations.limiter().max_length() as usize)
+				let oldest = (self.address_confirmations.len()
+					>= self.address_confirmations.limiter().max_length() as usize)
 					.then(|| {
 						self.address_confirmations.pop_oldest().map(|(address, peers)| {
 							if peers.len() >= MIN_ADDRESS_CONFIRMATIONS {

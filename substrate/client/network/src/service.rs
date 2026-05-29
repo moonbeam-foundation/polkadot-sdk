@@ -419,6 +419,8 @@ where
 			// Remove possible duplicates.
 			addresses.sort();
 			addresses.dedup();
+			addresses
+				.retain(|(_, address)| network_config.dns_multiaddr_policy.allows(address, true));
 
 			addresses
 		};
@@ -487,6 +489,7 @@ where
 				);
 				config.with_dht_random_walk(network_config.enable_dht_random_walk);
 				config.allow_non_globals_in_dht(network_config.allow_non_globals_in_dht);
+				config.dns_multiaddr_policy(network_config.dns_multiaddr_policy.clone());
 				config.use_kademlia_disjoint_query_paths(
 					network_config.kademlia_disjoint_query_paths,
 				);
@@ -1828,9 +1831,9 @@ where
 						DialError::LocalPeerId { .. } => Some("local-peer-id"),
 						DialError::WrongPeerId { .. } => Some("invalid-peer-id"),
 						DialError::Transport(_) => Some("transport-error"),
-						DialError::NoAddresses |
-						DialError::DialPeerConditionFalse(_) |
-						DialError::Aborted => None, // ignore them
+						DialError::NoAddresses
+						| DialError::DialPeerConditionFalse(_)
+						| DialError::Aborted => None, // ignore them
 					};
 					if let Some(reason) = reason {
 						metrics.pending_connections_errors_total.with_label_values(&[reason]).inc();

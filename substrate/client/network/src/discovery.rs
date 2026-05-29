@@ -48,7 +48,7 @@
 
 use crate::{
 	config::{
-		ProtocolId, KADEMLIA_MAX_PROVIDER_KEYS, KADEMLIA_PROVIDER_RECORD_TTL,
+		DnsMultiaddrPolicy, ProtocolId, KADEMLIA_MAX_PROVIDER_KEYS, KADEMLIA_PROVIDER_RECORD_TTL,
 		KADEMLIA_PROVIDER_REPUBLISH_INTERVAL,
 	},
 	utils::LruHashSet,
@@ -120,6 +120,7 @@ pub struct DiscoveryConfig {
 	dht_random_walk: bool,
 	allow_private_ip: bool,
 	allow_non_globals_in_dht: bool,
+	dns_multiaddr_policy: DnsMultiaddrPolicy,
 	discovery_only_if_under_num: u64,
 	enable_mdns: bool,
 	kademlia_disjoint_query_paths: bool,
@@ -137,6 +138,7 @@ impl DiscoveryConfig {
 			dht_random_walk: true,
 			allow_private_ip: true,
 			allow_non_globals_in_dht: false,
+			dns_multiaddr_policy: DnsMultiaddrPolicy::default(),
 			discovery_only_if_under_num: std::u64::MAX,
 			enable_mdns: false,
 			kademlia_disjoint_query_paths: false,
@@ -178,6 +180,12 @@ impl DiscoveryConfig {
 	/// Should non-global addresses be inserted to the DHT?
 	pub fn allow_non_globals_in_dht(&mut self, value: bool) -> &mut Self {
 		self.allow_non_globals_in_dht = value;
+		self
+	}
+
+	/// Set the DNS multiaddress policy.
+	pub fn dns_multiaddr_policy(&mut self, policy: DnsMultiaddrPolicy) -> &mut Self {
+		self.dns_multiaddr_policy = policy;
 		self
 	}
 
@@ -223,6 +231,7 @@ impl DiscoveryConfig {
 			dht_random_walk,
 			allow_private_ip,
 			allow_non_globals_in_dht,
+			dns_multiaddr_policy,
 			discovery_only_if_under_num,
 			enable_mdns,
 			kademlia_disjoint_query_paths,
@@ -296,6 +305,7 @@ impl DiscoveryConfig {
 				Toggle::from(None)
 			},
 			allow_non_globals_in_dht,
+			dns_multiaddr_policy,
 			known_external_addresses: LruHashSet::new(
 				NonZeroUsize::new(MAX_KNOWN_EXTERNAL_ADDRESSES)
 					.expect("value is a constant; constant is non-zero; qed."),
@@ -338,6 +348,8 @@ pub struct DiscoveryBehaviour {
 	discovery_only_if_under_num: u64,
 	/// Should non-global addresses be added to the DHT?
 	allow_non_globals_in_dht: bool,
+	/// Policy for DNS-based multiaddresses.
+	dns_multiaddr_policy: DnsMultiaddrPolicy,
 	/// A cache of discovered external addresses. Only used for logging purposes.
 	known_external_addresses: LruHashSet<Multiaddr>,
 	/// Records to publish per QueryId.
@@ -377,6 +389,15 @@ impl DiscoveryBehaviour {
 	///
 	/// If we didn't know this address before, also generates a `Discovered` event.
 	pub fn add_known_address(&mut self, peer_id: PeerId, addr: Multiaddr) {
+		if !self.dns_multiaddr_policy.allows(&addr, true) {
+			trace!(
+				target: LOG_TARGET,
+				"Ignoring configured DNS address {} for {} due to DNS multiaddr policy.",
+				addr, peer_id
+			);
+			return;
+		}
+
 		let addrs_list = self.ephemeral_addresses.entry(peer_id).or_default();
 		if addrs_list.contains(&addr) {
 			return;
@@ -406,6 +427,15 @@ impl DiscoveryBehaviour {
 				trace!(
 					target: LOG_TARGET,
 					"Ignoring self-reported non-global address {} from {}.", addr, peer_id
+				);
+				return;
+			}
+
+			if !self.dns_multiaddr_policy.allows(&addr, false) {
+				trace!(
+					target: LOG_TARGET,
+					"Ignoring self-reported DNS address {} from {} due to DNS multiaddr policy.",
+					addr, peer_id
 				);
 				return;
 			}
@@ -759,6 +789,8 @@ impl NetworkBehaviour for DiscoveryBehaviour {
 				});
 			}
 
+			list_to_filter.retain(|addr| self.dns_multiaddr_policy.allows(addr, false));
+
 			list_to_filter.into_iter().for_each(|address| {
 				list.insert_if_absent(address);
 			});
@@ -843,7 +875,9 @@ impl NetworkBehaviour for DiscoveryBehaviour {
 					address.push(Protocol::P2p(self.local_peer_id));
 				}
 
-				if Self::can_add_to_dht(&address) {
+				if Self::can_add_to_dht(&address)
+					&& self.dns_multiaddr_policy.allows(&address, false)
+				{
 					// NOTE: we might re-discover the same address multiple times
 					// in which case we just want to refrain from logging.
 					if self.known_external_addresses.insert(address.clone()) {
@@ -1418,8 +1452,8 @@ mod tests {
 							match e {
 								SwarmEvent::Behaviour(behavior) => {
 									match behavior {
-										DiscoveryOut::UnroutablePeer(other) |
-										DiscoveryOut::Discovered(other) => {
+										DiscoveryOut::UnroutablePeer(other)
+										| DiscoveryOut::Discovered(other) => {
 											// Call `add_self_reported_address` to simulate identify
 											// happening.
 											let addr = swarms
