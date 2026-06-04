@@ -58,6 +58,9 @@ use sp_runtime::{
 };
 use std::{collections::VecDeque, sync::Arc, time::Duration};
 
+const COLLATION_SEND_TIME_RESERVE: Duration = Duration::from_millis(500);
+const MIN_BLOCK_PROPOSAL_DURATION: Duration = Duration::from_millis(250);
+
 /// Parameters for [`run_block_builder`].
 pub struct BuilderTaskParams<
 	Block: BlockT,
@@ -463,6 +466,29 @@ where
 				continue;
 			};
 
+			let Some(proposal_duration) = adjusted_authoring_duration
+				.checked_sub(COLLATION_SEND_TIME_RESERVE)
+				.filter(|duration| *duration >= MIN_BLOCK_PROPOSAL_DURATION)
+			else {
+				tracing::debug!(
+					target: crate::LOG_TARGET,
+					?adjusted_authoring_duration,
+					?COLLATION_SEND_TIME_RESERVE,
+					?MIN_BLOCK_PROPOSAL_DURATION,
+					"Not building block because there is not enough time left after reserving time for collation submission."
+				);
+
+				continue;
+			};
+
+			tracing::debug!(
+				target: crate::LOG_TARGET,
+				?adjusted_authoring_duration,
+				?proposal_duration,
+				?COLLATION_SEND_TIME_RESERVE,
+				"Reserved time for collation submission."
+			);
+
 			let Ok(Some(candidate)) = collator
 				.build_block_and_import(BuildBlockAndImportParams {
 					parent_header: &parent_header,
@@ -472,7 +498,7 @@ where
 					],
 					parachain_inherent_data,
 					extra_inherent_data: other_inherent_data,
-					proposal_duration: adjusted_authoring_duration,
+					proposal_duration,
 					max_pov_size: allowed_pov_size,
 					storage_proof_recorder: None,
 					extra_extensions: Default::default(),
