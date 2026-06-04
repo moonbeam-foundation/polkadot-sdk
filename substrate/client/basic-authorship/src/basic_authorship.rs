@@ -54,6 +54,7 @@ use std::{marker::PhantomData, pin::Pin, sync::Arc, time};
 pub const DEFAULT_BLOCK_SIZE_LIMIT: usize = 4 * 1024 * 1024 + 512;
 
 const DEFAULT_SOFT_DEADLINE_PERCENT: Percent = Percent::from_percent(50);
+const PROPOSAL_DEADLINE_RESERVE_PERCENT: u32 = 25;
 
 const LOG_TARGET: &'static str = "basic-authorship";
 
@@ -375,8 +376,11 @@ where
 			ignored_nodes_by_proof_recording,
 		}: ProposeArgs<Block>,
 	) -> Result<Proposal<Block, PR::Proof>, sp_blockchain::Error> {
-		// leave some time for evaluation and block finalization (10%)
-		let deadline = (self.now)() + max_duration - max_duration / 10;
+		// Leave time for proof evaluation, block finalization, sealing, importing, and collation
+		// submission. The proposer checks this deadline cooperatively between transactions, so this
+		// reserve needs to be conservative under high transaction pressure.
+		let deadline =
+			(self.now)() + max_duration - max_duration * PROPOSAL_DEADLINE_RESERVE_PERCENT / 100;
 		let block_timer = time::Instant::now();
 		let mut block_builder = BlockBuilderBuilder::new(&*self.client)
 			.on_parent_block(self.parent_hash)
@@ -479,9 +483,30 @@ where
 		let mut unqueue_invalid = TxInvalidityReportMap::new();
 		let mut limit_hit_reason: Option<EndProposingReason> = None;
 
-		let delay = deadline.saturating_duration_since((self.now)()) / 8;
-		let mut pending_iterator =
-			self.transaction_pool.ready_at_with_timeout(self.parent_hash, delay).await;
+		let txpool_hard_timeout = deadline.saturating_duration_since((self.now)()) / 8;
+		let txpool_soft_timeout = txpool_hard_timeout / 2;
+		let ready_transactions = self
+			.transaction_pool
+			.ready_at_with_timeout(self.parent_hash, txpool_soft_timeout)
+			.fuse();
+		let txpool_timeout = futures_timer::Delay::new(txpool_hard_timeout).fuse();
+		futures::pin_mut!(ready_transactions, txpool_timeout);
+
+		// `ready_at_with_timeout` returns best-effort transactions when the pool cooperates, but the
+		// proposer must not rely on the pool future making progress under heavy pressure.
+		let mut pending_iterator = match future::select(ready_transactions, txpool_timeout).await {
+			future::Either::Left((pending_iterator, _)) => pending_iterator,
+			future::Either::Right(((), _)) => {
+				debug!(
+					target: LOG_TARGET,
+					"Timed out waiting for ready transactions from the pool after {:?} \
+					(pool timeout {:?}), proceeding with proposing.",
+					txpool_hard_timeout,
+					txpool_soft_timeout,
+				);
+				return Ok(EndProposingReason::HitDeadline);
+			},
+		};
 
 		let block_size_limit = block_size_limit.unwrap_or(self.default_block_size_limit);
 
