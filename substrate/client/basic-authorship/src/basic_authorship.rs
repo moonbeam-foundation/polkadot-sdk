@@ -80,6 +80,8 @@ pub struct ProposerFactory<A, C> {
 	/// transactions which exhaust resources, we will conclude that the block is full.
 	soft_deadline_percent: Percent,
 	telemetry: Option<TelemetryHandle>,
+	/// If true, the proposer skips transaction inclusion and only builds inherents.
+	force_empty_blocks: bool,
 }
 
 impl<A, C> Clone for ProposerFactory<A, C> {
@@ -92,6 +94,7 @@ impl<A, C> Clone for ProposerFactory<A, C> {
 			default_block_size_limit: self.default_block_size_limit,
 			soft_deadline_percent: self.soft_deadline_percent,
 			telemetry: self.telemetry.clone(),
+			force_empty_blocks: self.force_empty_blocks,
 		}
 	}
 }
@@ -113,6 +116,7 @@ impl<A, C> ProposerFactory<A, C> {
 			soft_deadline_percent: DEFAULT_SOFT_DEADLINE_PERCENT,
 			telemetry,
 			client,
+			force_empty_blocks: false,
 		}
 	}
 
@@ -154,6 +158,11 @@ impl<A, C> ProposerFactory<A, C> {
 	pub fn set_soft_deadline(&mut self, percent: Percent) {
 		self.soft_deadline_percent = percent;
 	}
+
+	/// Configure whether proposers should skip transaction inclusion and only build inherents.
+	pub fn set_force_empty_blocks(&mut self, force_empty_blocks: bool) {
+		self.force_empty_blocks = force_empty_blocks;
+	}
 }
 
 impl<Block, C, A> ProposerFactory<A, C>
@@ -187,6 +196,7 @@ where
 			default_block_size_limit: self.default_block_size_limit,
 			soft_deadline_percent: self.soft_deadline_percent,
 			telemetry: self.telemetry.clone(),
+			force_empty_blocks: self.force_empty_blocks,
 		};
 
 		proposer
@@ -221,6 +231,7 @@ pub struct Proposer<Block: BlockT, C, A: TransactionPool> {
 	default_block_size_limit: usize,
 	soft_deadline_percent: Percent,
 	telemetry: Option<TelemetryHandle>,
+	force_empty_blocks: bool,
 }
 
 impl<A, Block, C> sp_consensus::Proposer<Block> for Proposer<Block, C, A>
@@ -306,7 +317,15 @@ where
 
 		self.apply_inherents(&mut block_builder, inherent_data)?;
 
-		let mode = block_builder.extrinsic_inclusion_mode();
+		let mode = if self.force_empty_blocks {
+			debug!(
+				target: LOG_TARGET,
+				"Skipping transaction inclusion because empty block production is forced."
+			);
+			ExtrinsicInclusionMode::OnlyInherents
+		} else {
+			block_builder.extrinsic_inclusion_mode()
+		};
 		let end_reason = match mode {
 			ExtrinsicInclusionMode::AllExtrinsics => {
 				self.apply_extrinsics(&mut block_builder, deadline, block_size_limit).await?
@@ -736,6 +755,44 @@ mod tests {
 		)
 		.map(|r| r.block)
 		.unwrap();
+	}
+
+	#[test]
+	fn should_skip_transactions_when_empty_blocks_are_forced() {
+		let client = Arc::new(substrate_test_runtime_client::new());
+		let spawner = sp_core::testing::TaskExecutor::new();
+		let txpool = Arc::from(BasicPool::new_full(
+			Default::default(),
+			true.into(),
+			None,
+			spawner.clone(),
+			client.clone(),
+		));
+		let genesis_hash = client.info().genesis_hash;
+
+		block_on(txpool.submit_at(genesis_hash, SOURCE, vec![extrinsic(0), extrinsic(1)])).unwrap();
+		block_on(txpool.maintain(chain_event(
+			client.expect_header(genesis_hash).expect("there should be header"),
+		)));
+		assert_eq!(txpool.ready().count(), 2);
+
+		let mut proposer_factory =
+			ProposerFactory::new(spawner.clone(), client.clone(), txpool.clone(), None, None);
+		proposer_factory.set_force_empty_blocks(true);
+		let proposer = proposer_factory.init_with_now(
+			&client.expect_header(genesis_hash).unwrap(),
+			Box::new(time::Instant::now),
+		);
+
+		let block = block_on(proposer.propose_block(ProposeArgs {
+			max_duration: time::Duration::from_secs(3),
+			..Default::default()
+		}))
+		.map(|r| r.block)
+		.unwrap();
+
+		assert_eq!(block.extrinsics().len(), 0);
+		assert_eq!(txpool.ready().count(), 2);
 	}
 
 	#[test]
