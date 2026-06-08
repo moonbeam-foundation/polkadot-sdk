@@ -18,13 +18,14 @@
 
 use super::*;
 use frame_support::pallet_prelude::{DispatchClass, Pays};
+use frame_support::traits::GetCallMetadata;
 use frame_system::RawOrigin;
 use sp_runtime::traits::{AsTransactionAuthorizedOrigin, DispatchTransaction};
 
 #[frame_benchmarking::v2::benchmarks(
 	where T: Send + Sync,
 		<T as frame_system::Config>::RuntimeCall:
-			Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>,
+			Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + GetCallMetadata,
 		<T as frame_system::Config>::RuntimeOrigin: AsTransactionAuthorizedOrigin,
 )]
 mod bench {
